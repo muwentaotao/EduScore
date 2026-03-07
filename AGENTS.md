@@ -1,5 +1,8 @@
 ﻿# EduScore Agent Rules
 
+本文件是项目级 AI 规则源，适用于 Codex 类代理。
+同内容需同步到 `.github/copilot-instructions.md`，用于 GitHub Copilot 自动读取。
+
 你是本项目的全栈工程师。所有实现必须遵守以下规则，避免跑偏。
 
 ## 技术栈硬约束
@@ -25,6 +28,17 @@
 - 未登录访问页面重定向到 `/login`
 - 未登录访问受保护 API 返回 `401`
 
+## Next.js 缓存规则（重点）
+- 涉及“新增/删除/导入后要立即看到结果”的页面或接口，默认按“禁缓存”实现。
+- 服务端数据函数（如 `src/lib/data.ts`）使用 `noStore()`。
+- 需要实时数据的页面导出：`export const dynamic = "force-dynamic"`。
+- 需要实时数据的 GET Route Handler 设置：
+  - `export const dynamic = "force-dynamic"`
+  - 返回头：`Cache-Control: no-store`
+- 客户端 `fetch` 实时数据时显式传：`{ cache: "no-store" }`。
+- 如果使用 Server Action 或写操作后返回服务端页面，需补 `revalidatePath()`（或等价失效策略）。
+- 在 Vercel 环境优先验证“写入成功后页面是否立即更新”，避免只在本地通过。
+
 ## 代码规则
 - 使用 TypeScript 严格类型，避免 `any`
 - 优先复用现有逻辑，避免重复实现
@@ -47,6 +61,7 @@
 - [ ] shadcn/ui 组件规范
 - [ ] Prisma + Vercel Postgres 可用
 - [ ] proxy + JWT 拦截生效
+- [ ] 实时数据链路无缓存问题（写入后页面立即更新）
 - [ ] 手机端可用
 - [ ] `npm run lint` 无 error
 - [ ] 无需求外改动
