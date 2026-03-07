@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE, AUTH_PASSWORD, AUTH_USERNAME } from "@/lib/auth";
+import { createSessionToken } from "@/lib/session";
 
 export async function POST(request: NextRequest) {
   const payload = (await request.json()) as { username?: string; password?: string };
@@ -10,8 +11,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "用户名或密码错误" }, { status: 401 });
   }
 
+  const token = await createSessionToken({ sub: AUTH_USERNAME });
   const response = NextResponse.json({ message: "登录成功" });
-  response.cookies.set(AUTH_COOKIE, "1", {
+  response.cookies.set(AUTH_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",

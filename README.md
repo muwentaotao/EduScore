@@ -1,116 +1,127 @@
 # EduScore
 
-初三社会单科成绩系统（Next.js 16 + App Router + Prisma + Vercel Prisma Postgres）。
+初三社会单科成绩系统（Next.js 16 + App Router + Prisma + Vercel Prisma Postgres）
 
 ## 登录信息
 
 - 用户名：`admin`
 - 密码：`201227`
 
-## 1. 迁移到 Vercel Prisma Postgres（首次）
+## 一、首次接入 Vercel Prisma Postgres
 
-已配置数据库实例：
+数据库实例：
 - Name: `prisma-postgres-gray-canvas`
 - Prisma ID: `cmmgglsth05pe2qee1ifyuc4j`
 
-### 1.1 安装依赖
+### 1. 安装依赖
 
 ```bash
 npm install
 ```
 
-### 1.2 连接 Vercel 项目
+### 2. 安装 Vercel CLI（你当前报错的原因）
+
+你报错 `vercel : 无法将“vercel”项识别为...` 是因为本机没安装 Vercel CLI。
+
+安装方式（任选其一）：
+
+```bash
+npm i -g vercel
+```
+
+或（无需全局安装）：
+
+```bash
+npx vercel --version
+```
+
+### 3. 连接 Vercel 项目
 
 ```bash
 vercel link
 ```
 
-### 1.3 拉取数据库环境变量
+执行后会让你选择 Team / Project，选中你的 `EduScore` 对应项目。
+
+### 4. 拉取环境变量
 
 ```bash
 vercel env pull .env.development.local
 ```
 
-你需要确保本地环境中有这些变量（由 Vercel 拉取）：
+需要包含：
 - `DATABASE_URL`
 - `POSTGRES_URL`
 - `PRISMA_DATABASE_URL`
+- `AUTH_SECRET`
 
-### 1.4 生成 Prisma Client
+### 5. 生成 Prisma Client + 迁移 + 种子数据
 
 ```bash
 npm run prisma:generate
-```
-
-### 1.5 创建迁移并应用到 Prisma Postgres
-
-```bash
 npm run prisma:migrate -- --name init
-```
-
-### 1.6 初始化基础数据
-
-```bash
 npm run prisma:seed
 ```
 
-### 1.7 本地启动
+### 6. 本地运行
 
 ```bash
 npm run dev
 ```
 
-## 2. 部署流程（Vercel）
+## 二、部署到 Vercel
+
+预览部署：
 
 ```bash
 vercel deploy
 ```
 
-生产发布：
+生产部署：
 
 ```bash
 vercel --prod
 ```
 
-## 3. 后续更新流程（每次发版）
+## 三、后续更新流程
 
-### 3.1 拉取最新环境变量（建议先做）
+### 1. 拉取最新环境变量
 
 ```bash
 vercel env pull .env.development.local
 ```
 
-### 3.2 修改 `prisma/schema.prisma` 后
-
-1. 创建迁移并应用：
+### 2. 如果改了 Prisma 模型
 
 ```bash
 npm run prisma:migrate -- --name <migration_name>
-```
-
-2. 生成客户端：
-
-```bash
 npm run prisma:generate
 ```
 
-3. 如需补基础数据：
+如需重置演示数据：
 
 ```bash
 npm run prisma:seed
 ```
 
-### 3.3 发布
+### 3. 发布
 
 ```bash
 vercel --prod
 ```
 
-## 4. 当前系统行为
+## 四、GitHub 更新流程
 
-- 单科目系统（社会科）
-- 导入成绩时自动识别首行表头
-- 成绩列优先识别“社会”列，找不到再回退“成绩/分数/总分/得分”
-- 同名考生自动匹配；不存在则自动创建后写入该次考试成绩
-- 可删除考试（删除考试及其全部成绩）
-- 仪表盘和趋势表最多展示最近 5 场考试
+```bash
+git add .
+git commit -m "feat: update auth and postgres migration"
+git push origin main
+```
+
+## 五、系统规则（当前）
+
+- 单科系统（社会）
+- 导入时读取第一行表头
+- 成绩列优先识别“社会”列，找不到再回退到“成绩/分数/总分/得分”
+- 按姓名自动匹配考生，不存在则自动创建并写入成绩
+- 仅登录后可访问仪表盘等业务页面（Proxy + JWT）
