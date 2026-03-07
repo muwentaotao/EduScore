@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { unstable_noStore as noStore } from "next/cache";
 import type { AnalysisPageData, ClassDetail, DashboardStudentRow, ScoreMap } from "@/lib/types";
 import { toFixed } from "@/lib/utils";
 
@@ -10,6 +11,7 @@ function avg(values: number[]) {
 }
 
 export async function getDashboardData() {
+  noStore();
   const [classes, exams, students] = await Promise.all([
     prisma.class.findMany({ orderBy: { name: "asc" } }),
     prisma.exam.findMany({ orderBy: { date: "asc" } }),
@@ -73,6 +75,7 @@ export async function getDashboardData() {
 }
 
 export async function getClassDetail(classId: string): Promise<ClassDetail | null> {
+  noStore();
   const classInfo = await prisma.class.findUnique({
     where: { id: classId },
     include: {
@@ -133,6 +136,7 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
 }
 
 export async function getAnalysisData(examId?: string): Promise<AnalysisPageData> {
+  noStore();
   const [exams, classes] = await Promise.all([
     prisma.exam.findMany({ orderBy: { date: "asc" } }),
     prisma.class.findMany({ orderBy: { name: "asc" } })

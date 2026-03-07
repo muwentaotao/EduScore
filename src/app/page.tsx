@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getDashboardData } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 function ProgressCell({ delta }: { delta: number | null }) {
   if (delta === null) {
     return (

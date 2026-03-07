@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardData } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 export default async function ClassIndexPage() {
   const data = await getDashboardData();
   return (

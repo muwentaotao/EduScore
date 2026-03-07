@@ -22,7 +22,9 @@ export function AnalysisClient() {
 
   async function fetchData(examId?: string) {
     setLoading(true);
-    const response = await fetch(`/api/analysis${examId ? `?examId=${examId}` : ""}`);
+    const response = await fetch(`/api/analysis${examId ? `?examId=${examId}` : ""}`, {
+      cache: "no-store"
+    });
     const result = (await response.json()) as AnalysisPageData;
     setData(result);
     setLoading(false);

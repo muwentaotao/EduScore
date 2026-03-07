@@ -40,7 +40,7 @@ export function ClassDetailClient({ classId }: Props) {
 
   async function fetchData() {
     setLoading(true);
-    const response = await fetch(`/api/class/${classId}`);
+    const response = await fetch(`/api/class/${classId}`, { cache: "no-store" });
     const result = (await response.json()) as ClassDetail;
     setData(result);
     setLoading(false);

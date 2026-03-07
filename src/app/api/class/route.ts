@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const classes = await prisma.class.findMany({
     include: {
@@ -15,7 +17,12 @@ export async function GET() {
       name: item.name,
       color: item.color,
       studentCount: item._count.students
-    }))
+    })),
+    {
+      headers: {
+        "Cache-Control": "no-store"
+      }
+    }
   );
 }
 

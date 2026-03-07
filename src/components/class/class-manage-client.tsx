@@ -28,7 +28,7 @@ export function ClassManageClient() {
 
   async function fetchClasses() {
     setLoading(true);
-    const response = await fetch("/api/class");
+    const response = await fetch("/api/class", { cache: "no-store" });
     const result = (await response.json()) as ClassItem[];
     setClasses(result);
     setLoading(false);
