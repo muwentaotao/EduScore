@@ -42,7 +42,6 @@ export async function getDashboardData() {
       studentId: student.id,
       classId: student.classId,
       className: student.class.name,
-      studentNo: student.studentNo,
       studentName: student.name,
       scores,
       progressDelta,
@@ -114,7 +113,6 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
     }
     return {
       studentId: student.id,
-      studentNo: student.studentNo,
       studentName: student.name,
       scores
     };

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, context: RouteContext<"/api/cla
 
   const records = parseFileToRecords(await file.arrayBuffer());
   if (!records.length) {
-    return NextResponse.json({ message: "未识别到有效数据，请确认第一行表头包含“姓名”和“成绩”" }, { status: 400 });
+    return NextResponse.json({ message: "未识别到有效数据，请确认首行表头包含姓名与社会/成绩列" }, { status: 400 });
   }
 
   const exam = await prisma.exam.upsert({
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest, context: RouteContext<"/api/cla
     let student = studentMap.get(normalizedName);
     if (!student) {
       student = await prisma.student.create({
-        data: { classId, name: record.name, studentNo: null }
+        data: { classId, name: record.name }
       });
       studentMap.set(normalizedName, student);
       createdStudents += 1;

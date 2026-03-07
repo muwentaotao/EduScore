@@ -33,13 +33,14 @@ function ProgressCell({ delta }: { delta: number | null }) {
 
 export default async function DashboardPage() {
   const data = await getDashboardData();
+  const displayExams = data.exams.slice(-5);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold">成绩仪表盘</h1>
-          <p className="text-sm text-muted-foreground">无登录直达，展示三班卡片与全年级总表。</p>
+          <p className="text-sm text-muted-foreground">显示最近 5 场考试的进步排名与成绩。</p>
         </div>
         <Link href="/class/manage" className="text-sm text-sky-700 underline-offset-2 hover:underline">
           进入班级管理
@@ -53,7 +54,7 @@ export default async function DashboardPage() {
               <CardHeader>
                 <div className="mb-1 h-2 w-full rounded-full" style={{ backgroundColor: classItem.color }} />
                 <CardTitle>{classItem.name}</CardTitle>
-                <CardDescription>学生数：{classItem.studentCount}</CardDescription>
+                <CardDescription>考生数：{classItem.studentCount}</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-sky-700">点击进入班级成绩页</p>
@@ -61,15 +62,6 @@ export default async function DashboardPage() {
             </Card>
           </Link>
         ))}
-        <Card className="animate-rise border-sky-200 bg-gradient-to-br from-white to-sky-50">
-          <CardHeader>
-            <CardTitle>全年级大总表</CardTitle>
-            <CardDescription>三班合计 {data.rows.length} 名学生</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-slate-600">按进步分进行排名（最近一次成绩 - 上一次成绩）。</p>
-          </CardContent>
-        </Card>
       </section>
 
       <Card>
@@ -80,7 +72,7 @@ export default async function DashboardPage() {
                 <TableHead>进步排名</TableHead>
                 <TableHead>姓名</TableHead>
                 <TableHead>班级</TableHead>
-                {data.exams.map((exam) => (
+                {displayExams.map((exam) => (
                   <TableHead key={exam.id}>{exam.name}</TableHead>
                 ))}
                 <TableHead>进步分数</TableHead>
@@ -92,7 +84,7 @@ export default async function DashboardPage() {
                   <TableCell>{row.rank}</TableCell>
                   <TableCell>{row.studentName}</TableCell>
                   <TableCell>{row.className}</TableCell>
-                  {data.exams.map((exam) => (
+                  {displayExams.map((exam) => (
                     <TableCell key={exam.id}>{row.scores[exam.id] ?? "-"}</TableCell>
                   ))}
                   <TableCell>

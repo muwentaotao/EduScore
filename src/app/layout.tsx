@@ -5,7 +5,7 @@ import { AppShell } from "@/components/layout/shell";
 
 export const metadata: Metadata = {
   title: "EduScore",
-  description: "初三社会成绩管理看板"
+  description: "初三社会成绩管理系统"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

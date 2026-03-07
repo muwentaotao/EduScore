@@ -28,7 +28,6 @@ export function ScoreImportForm({ classId, compact = false, onImported }: Props)
 
     setImporting(true);
     setMessage("");
-
     const formData = new FormData();
     formData.append("file", file);
     formData.append("examName", examName.trim());
@@ -50,14 +49,14 @@ export function ScoreImportForm({ classId, compact = false, onImported }: Props)
       <div className={`grid gap-3 ${compact ? "grid-cols-1" : "lg:grid-cols-4"}`}>
         <div className="space-y-1.5">
           <Label>考试名称</Label>
-          <Input placeholder="例如：期中考试/随堂测试" value={examName} onChange={(e) => setExamName(e.target.value)} />
+          <Input placeholder="例如：期中/期末/随堂测试" value={examName} onChange={(e) => setExamName(e.target.value)} />
         </div>
         <div className="space-y-1.5">
           <Label>导入日期</Label>
           <Input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label>成绩文件（第一行表头）</Label>
+          <Label>成绩文件（首行为表头）</Label>
           <Input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </div>
         <div className="flex items-end">

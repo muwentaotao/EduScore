@@ -1,32 +1,116 @@
 # EduScore
 
-初三社会学科成绩分析系统（Next.js 16 + App Router + Prisma + SQLite）。
+初三社会单科成绩系统（Next.js 16 + App Router + Prisma + Vercel Prisma Postgres）。
 
-## 1. 启动
+## 登录信息
+
+- 用户名：`admin`
+- 密码：`201227`
+
+## 1. 迁移到 Vercel Prisma Postgres（首次）
+
+已配置数据库实例：
+- Name: `prisma-postgres-gray-canvas`
+- Prisma ID: `cmmgglsth05pe2qee1ifyuc4j`
+
+### 1.1 安装依赖
 
 ```bash
 npm install
-copy .env.example .env
+```
+
+### 1.2 连接 Vercel 项目
+
+```bash
+vercel link
+```
+
+### 1.3 拉取数据库环境变量
+
+```bash
+vercel env pull .env.development.local
+```
+
+你需要确保本地环境中有这些变量（由 Vercel 拉取）：
+- `DATABASE_URL`
+- `POSTGRES_URL`
+- `PRISMA_DATABASE_URL`
+
+### 1.4 生成 Prisma Client
+
+```bash
 npm run prisma:generate
-npm run prisma:push
+```
+
+### 1.5 创建迁移并应用到 Prisma Postgres
+
+```bash
+npm run prisma:migrate -- --name init
+```
+
+### 1.6 初始化基础数据
+
+```bash
 npm run prisma:seed
+```
+
+### 1.7 本地启动
+
+```bash
 npm run dev
 ```
 
-## 2. 说明
+## 2. 部署流程（Vercel）
 
-- `prisma:seed` 仅初始化必要基础数据：3 个班级（不生成学生假数据）。
-- `/class/manage`：班级管理页。
-  - 新增班级（可自定义班级名称与卡片颜色）。
-  - 按班级导入学生名单（A 列学号，B 列姓名）。
-- `/class/[classId]`：班级成绩页。
-  - 导入成绩（B 列姓名，D 列成绩）。
-  - 匹配优先级：学号 -> 姓名精确 -> 姓名模糊。
-- `/analysis`：年级分析页。
-  - 考试筛选、班均分图、分布图、总排名。
-  - 进步 TOP5 / 退步 TOP5。
-  - 每次考试进步最大的五名（相对上一次考试）。
+```bash
+vercel deploy
+```
 
-## 3. 导出
+生产发布：
 
-- `/api/export?examId=<考试ID>`
+```bash
+vercel --prod
+```
+
+## 3. 后续更新流程（每次发版）
+
+### 3.1 拉取最新环境变量（建议先做）
+
+```bash
+vercel env pull .env.development.local
+```
+
+### 3.2 修改 `prisma/schema.prisma` 后
+
+1. 创建迁移并应用：
+
+```bash
+npm run prisma:migrate -- --name <migration_name>
+```
+
+2. 生成客户端：
+
+```bash
+npm run prisma:generate
+```
+
+3. 如需补基础数据：
+
+```bash
+npm run prisma:seed
+```
+
+### 3.3 发布
+
+```bash
+vercel --prod
+```
+
+## 4. 当前系统行为
+
+- 单科目系统（社会科）
+- 导入成绩时自动识别首行表头
+- 成绩列优先识别“社会”列，找不到再回退“成绩/分数/总分/得分”
+- 同名考生自动匹配；不存在则自动创建后写入该次考试成绩
+- 可删除考试（删除考试及其全部成绩）
+- 仪表盘和趋势表最多展示最近 5 场考试

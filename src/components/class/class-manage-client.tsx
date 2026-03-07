@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -42,33 +43,34 @@ export function ClassManageClient() {
       setMessage("请填写班级名称");
       return;
     }
+
     setSaving(true);
     setMessage("");
-
     const response = await fetch("/api/class", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, color })
     });
     const result = await response.json();
+    setSaving(false);
+
     if (!response.ok) {
       setMessage(result.message || "创建失败");
-      setSaving(false);
       return;
     }
 
     setName("");
     setColor("#38bdf8");
-    setSaving(false);
     setMessage("班级创建成功");
     await fetchClasses();
   }
 
   async function deleteClass(classItem: ClassItem) {
-    const ok = window.confirm(`确认删除 ${classItem.name}？将同时删除该班考生和成绩。`);
+    const ok = window.confirm(`确认删除 ${classItem.name}？将删除该班所有考生和成绩。`);
     if (!ok) {
       return;
     }
+
     setDeletingClassId(classItem.id);
     setMessage("");
     const response = await fetch(`/api/class/${classItem.id}`, { method: "DELETE" });
@@ -82,7 +84,7 @@ export function ClassManageClient() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">班级管理</h1>
-        <p className="text-sm text-muted-foreground">单科系统：导入时自动按姓名匹配考生并写入成绩。</p>
+        <p className="text-sm text-muted-foreground">单科系统：导入时按姓名自动匹配或创建考生并写入成绩。</p>
       </div>
 
       <Card>

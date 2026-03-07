@@ -1,7 +1,8 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useMemo, useState } from "react";
-import { Download, Loader2, TrendingUp } from "lucide-react";
+import { Download, Loader2, Trash2, TrendingUp } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,17 +17,26 @@ export function ClassDetailClient({ classId }: Props) {
   const [data, setData] = useState<ClassDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [trendStudentId, setTrendStudentId] = useState<string | null>(null);
+  const [deletingExamId, setDeletingExamId] = useState<string | null>(null);
 
-  const trendStudent = useMemo(() => data?.students.find((s) => s.studentId === trendStudentId) ?? null, [data, trendStudentId]);
+  const displayExams = useMemo(() => (data ? data.examHeaders.slice(-5) : []), [data]);
+  const displayAverages = useMemo(
+    () => (data ? data.averageByExam.filter((item) => displayExams.some((exam) => exam.id === item.examId)) : []),
+    [data, displayExams]
+  );
+  const trendStudent = useMemo(
+    () => data?.students.find((s) => s.studentId === trendStudentId) ?? null,
+    [data, trendStudentId]
+  );
   const trendSeries = useMemo(() => {
-    if (!data || !trendStudent) {
+    if (!trendStudent) {
       return [];
     }
-    return data.examHeaders.map((exam) => ({
+    return displayExams.map((exam) => ({
       exam: exam.name,
       score: trendStudent.scores[exam.id] ?? null
     }));
-  }, [data, trendStudent]);
+  }, [displayExams, trendStudent]);
 
   async function fetchData() {
     setLoading(true);
@@ -39,6 +49,17 @@ export function ClassDetailClient({ classId }: Props) {
   useEffect(() => {
     fetchData();
   }, [classId]);
+
+  async function deleteExam(examId: string, examName: string) {
+    const ok = window.confirm(`确认删除考试“${examName}”及其所有成绩？`);
+    if (!ok) {
+      return;
+    }
+    setDeletingExamId(examId);
+    await fetch(`/api/exam/${examId}`, { method: "DELETE" });
+    setDeletingExamId(null);
+    await fetchData();
+  }
 
   if (loading || !data) {
     return (
@@ -54,7 +75,9 @@ export function ClassDetailClient({ classId }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold">{data.className} 成绩页</h1>
-          <p className="text-sm text-muted-foreground">单科系统：按姓名自动匹配考生并追加该次考试成绩。</p>
+          <p className="text-sm text-muted-foreground">
+            单科系统，按姓名自动匹配/创建考生。列表与趋势最多展示最近 5 场考试。
+          </p>
         </div>
       </div>
 
@@ -68,12 +91,32 @@ export function ClassDetailClient({ classId }: Props) {
       </Card>
 
       <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardTitle>考试管理（可删除考试）</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {data.examHeaders.map((exam) => (
+            <Button
+              key={exam.id}
+              variant="outline"
+              onClick={() => deleteExam(exam.id, exam.name)}
+              disabled={deletingExamId === exam.id}
+            >
+              {deletingExamId === exam.id ? <Loader2 className="animate-spin" /> : <Trash2 />}
+              {exam.name}
+            </Button>
+          ))}
+          {data.examHeaders.length === 0 && <p className="text-sm text-muted-foreground">暂无考试数据</p>}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader>
-          <CardTitle>历次考试班级平均分（柱状图）</CardTitle>
+          <CardTitle>班级平均分（最近 5 场）</CardTitle>
         </CardHeader>
         <CardContent className="h-64 sm:h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data.averageByExam}>
+            <BarChart data={displayAverages}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="examName" />
               <YAxis domain={[40, 100]} />
@@ -86,8 +129,8 @@ export function ClassDetailClient({ classId }: Props) {
 
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-          <CardTitle>学生成绩表</CardTitle>
-          <a href={`/api/export?examId=${data.examHeaders[data.examHeaders.length - 1]?.id ?? ""}`}>
+          <CardTitle>学生成绩表（最近 5 场）</CardTitle>
+          <a href={`/api/export?examId=${displayExams[displayExams.length - 1]?.id ?? ""}`}>
             <Button variant="outline">
               <Download />
               导出最新考试排名
@@ -99,7 +142,7 @@ export function ClassDetailClient({ classId }: Props) {
             <TableHeader>
               <TableRow>
                 <TableHead>姓名</TableHead>
-                {data.examHeaders.map((exam) => (
+                {displayExams.map((exam) => (
                   <TableHead key={exam.id}>{exam.name}</TableHead>
                 ))}
                 <TableHead>趋势</TableHead>
@@ -109,7 +152,7 @@ export function ClassDetailClient({ classId }: Props) {
               {data.students.map((student) => (
                 <TableRow key={student.studentId}>
                   <TableCell>{student.studentName}</TableCell>
-                  {data.examHeaders.map((exam) => (
+                  {displayExams.map((exam) => (
                     <TableCell key={exam.id}>{student.scores[exam.id] ?? "-"}</TableCell>
                   ))}
                   <TableCell>
@@ -128,7 +171,7 @@ export function ClassDetailClient({ classId }: Props) {
       <Dialog open={Boolean(trendStudent)} onOpenChange={(open) => !open && setTrendStudentId(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{trendStudent?.studentName} 成绩趋势</DialogTitle>
+            <DialogTitle>{trendStudent?.studentName} 趋势（最近 5 场）</DialogTitle>
           </DialogHeader>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">

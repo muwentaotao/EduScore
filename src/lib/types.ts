@@ -4,7 +4,6 @@ export type DashboardStudentRow = {
   studentId: string;
   classId: string;
   className: string;
-  studentNo: string | null;
   studentName: string;
   scores: ScoreMap;
   progressDelta: number | null;
@@ -19,7 +18,6 @@ export type ClassDetail = {
   averageByExam: { examId: string; examName: string; average: number }[];
   students: Array<{
     studentId: string;
-    studentNo: string | null;
     studentName: string;
     scores: ScoreMap;
   }>;

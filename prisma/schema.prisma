@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -19,7 +19,6 @@ model Class {
 
 model Student {
   id         String   @id @default(cuid())
-  studentNo  String?
   name       String
   classId    String
   class      Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
@@ -28,7 +27,6 @@ model Student {
   updatedAt  DateTime @updatedAt
 
   @@index([name])
-  @@index([studentNo])
 }
 
 model Exam {

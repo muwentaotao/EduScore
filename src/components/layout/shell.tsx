@@ -3,8 +3,8 @@
 import type { ComponentType, ReactNode } from "react";
 import type { Route } from "next";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { BarChart3, LayoutDashboard, Menu, School, Settings2 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { BarChart3, LayoutDashboard, LogOut, Menu, School, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -40,8 +40,29 @@ function SideNav({ pathname }: { pathname: string }) {
   );
 }
 
+function LogoutButton() {
+  const router = useRouter();
+
+  async function onLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
+
+  return (
+    <Button variant="outline" onClick={onLogout}>
+      <LogOut size={14} />
+      退出登录
+    </Button>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+
+  if (pathname === "/login") {
+    return <main className="min-h-screen p-4 md:p-6">{children}</main>;
+  }
 
   return (
     <div className="min-h-screen md:flex">
@@ -51,20 +72,22 @@ export function AppShell({ children }: { children: ReactNode }) {
             <p className="text-lg font-semibold text-slate-800">EduScore</p>
             <p className="text-xs text-slate-500">初三社会成绩分析</p>
           </div>
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Menu size={16} />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left">
-              <div className="mb-6 rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-500 p-4 text-white shadow-soft">
-                <p className="text-lg font-semibold">EduScore</p>
-                <p className="text-xs opacity-90">导航</p>
-              </div>
-              <SideNav pathname={pathname} />
-            </SheetContent>
-          </Sheet>
+          <div className="flex items-center gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Menu size={16} />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left">
+                <div className="mb-6 rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-500 p-4 text-white shadow-soft">
+                  <p className="text-lg font-semibold">EduScore</p>
+                  <p className="text-xs opacity-90">导航</p>
+                </div>
+                <SideNav pathname={pathname} />
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </header>
 
@@ -74,9 +97,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="text-xs opacity-90">初三社会成绩分析</p>
         </div>
         <SideNav pathname={pathname} />
+        <div className="mt-4">
+          <LogoutButton />
+        </div>
       </aside>
 
-      <main className="flex-1 p-4 md:p-6">{children}</main>
+      <main className="flex-1 p-4 md:p-6">
+        <div className="mb-2 hidden justify-end md:flex">
+          <LogoutButton />
+        </div>
+        {children}
+      </main>
     </div>
   );
 }

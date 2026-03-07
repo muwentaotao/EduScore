@@ -27,7 +27,9 @@ export function parseFileToRecords(buffer: ArrayBuffer): ScoreRecord[] {
   const headers = (rows[0] ?? []).map((cell) => String(cell ?? "").trim());
 
   const nameIndex = findColumnIndex(headers, ["姓名", "名字", "学生"]);
-  const scoreIndex = findColumnIndex(headers, ["成绩", "分数", "总分", "得分"]);
+  const socialIndex = findColumnIndex(headers, ["社会", "道法", "政史", "政治"]);
+  const fallbackScoreIndex = findColumnIndex(headers, ["成绩", "分数", "总分", "得分"]);
+  const scoreIndex = socialIndex ?? fallbackScoreIndex;
 
   if (nameIndex === null || scoreIndex === null) {
     return [];
