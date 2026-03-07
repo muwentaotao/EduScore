@@ -50,9 +50,7 @@ vercel env pull .env.development.local
 ```
 
 需要包含：
-- `DATABASE_URL`
-- `POSTGRES_URL`
-- `PRISMA_DATABASE_URL`
+- `edu_score_PRISMA_DATABASE_URL`
 - `AUTH_SECRET`
 
 ### 5. 生成 Prisma Client + 迁移 + 种子数据
