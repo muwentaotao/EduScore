@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { ComponentType, ReactNode } from "react";
 import type { Route } from "next";
@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BarChart3, LayoutDashboard, LogOut, Menu, School, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 const navItems: { href: Route; label: string; icon: ComponentType<{ size?: number }> }[] = [
@@ -20,8 +20,12 @@ function SideNav({ pathname }: { pathname: string }) {
   return (
     <nav className="space-y-1">
       {navItems.map((item) => {
-        const active = item.href === "/class" ? pathname.startsWith("/class/") || pathname === "/class" : pathname === item.href;
+        const active =
+          item.href === "/class"
+            ? pathname === "/class" || (pathname.startsWith("/class/") && !pathname.startsWith("/class/manage"))
+            : pathname === item.href;
         const Icon = item.icon;
+
         return (
           <Link
             href={item.href}
@@ -40,7 +44,7 @@ function SideNav({ pathname }: { pathname: string }) {
   );
 }
 
-function LogoutButton() {
+function LogoutNavItem() {
   const router = useRouter();
 
   async function onLogout() {
@@ -50,7 +54,11 @@ function LogoutButton() {
   }
 
   return (
-    <Button variant="outline" onClick={onLogout}>
+    <Button
+      variant="ghost"
+      onClick={onLogout}
+      className="w-full justify-start rounded-xl px-3 py-2 text-sm font-normal text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+    >
       <LogOut size={14} />
       退出登录
     </Button>
@@ -80,34 +88,35 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left">
-                <div className="mb-6 rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-500 p-4 text-white shadow-soft">
-                  <p className="text-lg font-semibold">EduScore</p>
-                  <p className="text-xs opacity-90">导航</p>
+                <SheetTitle className="sr-only">主导航菜单</SheetTitle>
+                <div className="flex h-full flex-col">
+                  <div className="mb-6 rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-500 p-4 text-white shadow-soft">
+                    <p className="text-lg font-semibold">EduScore</p>
+                    <p className="text-xs opacity-90">导航</p>
+                  </div>
+                  <SideNav pathname={pathname} />
+                  <div className="mt-auto border-t pt-3">
+                    <LogoutNavItem />
+                  </div>
                 </div>
-                <SideNav pathname={pathname} />
               </SheetContent>
             </Sheet>
           </div>
         </div>
       </header>
 
-      <aside className="hidden w-64 border-r bg-white/95 p-4 backdrop-blur md:block">
+      <aside className="hidden w-64 flex-col border-r bg-white/95 p-4 backdrop-blur md:flex">
         <div className="mb-7 rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-500 p-4 text-white shadow-soft">
           <p className="text-lg font-semibold">EduScore</p>
           <p className="text-xs opacity-90">初三社会成绩分析</p>
         </div>
         <SideNav pathname={pathname} />
-        <div className="mt-4">
-          <LogoutButton />
+        <div className="mt-auto border-t pt-3">
+          <LogoutNavItem />
         </div>
       </aside>
 
-      <main className="flex-1 p-4 md:p-6">
-        <div className="mb-2 hidden justify-end md:flex">
-          <LogoutButton />
-        </div>
-        {children}
-      </main>
+      <main className="flex-1 p-4 md:p-6">{children}</main>
     </div>
   );
 }
