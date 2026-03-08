@@ -33,7 +33,7 @@ export async function getDashboardData() {
     const scores: ScoreMap = {};
     for (const exam of exams) {
       const hit = student.scores.find((item) => item.examId === exam.id);
-      scores[exam.id] = hit ? hit.score : null;
+      scores[exam.id] = hit && !hit.isAbsent ? hit.score : null;
     }
     const numeric = Object.values(scores).filter((v): v is number => typeof v === "number");
     const latestScore = numeric.at(-1) ?? null;
@@ -99,7 +99,10 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
   const exams = await prisma.exam.findMany({ orderBy: { date: "asc" } });
   const averageByExam = exams.map((exam) => {
     const values = classInfo.students
-      .map((student) => student.scores.find((score) => score.examId === exam.id)?.score ?? null)
+      .map((student) => {
+        const row = student.scores.find((score) => score.examId === exam.id);
+        return row && !row.isAbsent ? row.score : null;
+      })
       .filter((item): item is number => item !== null);
     return {
       examId: exam.id,
@@ -110,14 +113,17 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
 
   const students = classInfo.students.map((student) => {
     const scores: ScoreMap = {};
+    const absentByExam: Record<string, boolean> = {};
     for (const exam of exams) {
       const found = student.scores.find((score) => score.examId === exam.id);
-      scores[exam.id] = found?.score ?? null;
+      scores[exam.id] = found && !found.isAbsent ? found.score : null;
+      absentByExam[exam.id] = Boolean(found?.isAbsent);
     }
     return {
       studentId: student.id,
       studentName: student.name,
-      scores
+      scores,
+      absentByExam
     };
   });
 
@@ -157,7 +163,7 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
   }
 
   const scores = await prisma.score.findMany({
-    where: { examId: selected.id },
+    where: { examId: selected.id, isAbsent: false },
     include: {
       student: {
         include: {
@@ -209,7 +215,7 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
 
   if (prevExam) {
     const prevScores = await prisma.score.findMany({
-      where: { examId: prevExam.id },
+      where: { examId: prevExam.id, isAbsent: false },
       include: {
         student: {
           include: {
@@ -239,6 +245,7 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
 
   if (exams.length > 1) {
     const scoreRows = await prisma.score.findMany({
+      where: { isAbsent: false },
       include: {
         student: {
           include: {

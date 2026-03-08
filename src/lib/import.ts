@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 export type ScoreRecord = {
   name: string;
   score: number;
+  isAbsent: boolean;
 };
 
 function normalizeText(value: string) {
@@ -39,11 +40,14 @@ export function parseFileToRecords(buffer: ArrayBuffer): ScoreRecord[] {
   for (let i = 1; i < rows.length; i += 1) {
     const row = rows[i] ?? [];
     const name = String(row[nameIndex] ?? "").trim();
-    const score = Number(String(row[scoreIndex] ?? "").trim());
-    if (!name || Number.isNaN(score)) {
+    const rawScore = String(row[scoreIndex] ?? "").trim();
+    if (!name) {
       continue;
     }
-    records.push({ name, score });
+
+    const score = Number(rawScore);
+    const isAbsent = !rawScore || Number.isNaN(score) || score === 0;
+    records.push({ name, score: isAbsent ? 0 : score, isAbsent });
   }
 
   return records;

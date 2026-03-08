@@ -36,9 +36,13 @@ export async function POST(request: NextRequest, context: RouteContext<"/api/cla
   const existingStudents = await prisma.student.findMany({ where: { classId } });
   const studentMap = new Map(existingStudents.map((s) => [normalizeName(s.name), s]));
 
-  const uniqueByName = new Map<string, { name: string; score: number }>();
+  const uniqueByName = new Map<string, { name: string; score: number; isAbsent: boolean }>();
   for (const record of records) {
-    uniqueByName.set(normalizeName(record.name), { name: record.name, score: record.score });
+    uniqueByName.set(normalizeName(record.name), {
+      name: record.name,
+      score: record.score,
+      isAbsent: record.isAbsent
+    });
   }
 
   let createdStudents = 0;
@@ -61,8 +65,8 @@ export async function POST(request: NextRequest, context: RouteContext<"/api/cla
           examId: exam.id
         }
       },
-      update: { score: record.score, classId },
-      create: { classId, studentId: student.id, examId: exam.id, score: record.score }
+      update: { score: record.score, isAbsent: record.isAbsent, classId },
+      create: { classId, studentId: student.id, examId: exam.id, score: record.score, isAbsent: record.isAbsent }
     });
     savedScores += 1;
   }

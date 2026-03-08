@@ -44,6 +44,7 @@ model Score {
   examId    String
   classId   String
   score     Float
+  isAbsent  Boolean  @default(false)
   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
   class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)

@@ -20,6 +20,7 @@ export type ClassDetail = {
     studentId: string;
     studentName: string;
     scores: ScoreMap;
+    absentByExam: Record<string, boolean>;
   }>;
 };
 

@@ -45,7 +45,7 @@ npm run dev
 ## 5. 数据库变更（仅在改 Prisma 模型时）
 
 ```bash
-npm run prisma:migrate -- --name your_migration_name
+npm run prisma:migrate -- --name init
 npm run prisma:generate
 ```
 

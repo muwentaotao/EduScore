@@ -153,7 +153,9 @@ export function ClassDetailClient({ classId }: Props) {
                 <TableRow key={student.studentId}>
                   <TableCell>{student.studentName}</TableCell>
                   {displayExams.map((exam) => (
-                    <TableCell key={exam.id}>{student.scores[exam.id] ?? "-"}</TableCell>
+                    <TableCell key={exam.id}>
+                      {student.absentByExam[exam.id] ? "缺考" : (student.scores[exam.id] ?? "-")}
+                    </TableCell>
                   ))}
                   <TableCell>
                     <Button variant="ghost" onClick={() => setTrendStudentId(student.studentId)}>
