@@ -32,10 +32,13 @@ export function ClassDetailClient({ classId }: Props) {
     if (!trendStudent) {
       return [];
     }
-    return displayExams.map((exam) => ({
-      exam: exam.name,
-      score: trendStudent.scores[exam.id] ?? null
-    }));
+    return displayExams
+      .filter((exam) => !trendStudent.absentByExam[exam.id])
+      .map((exam) => ({
+        exam: exam.name,
+        score: trendStudent.scores[exam.id] ?? null
+      }))
+      .filter((item) => item.score !== null);
   }, [displayExams, trendStudent]);
 
   async function fetchData() {
