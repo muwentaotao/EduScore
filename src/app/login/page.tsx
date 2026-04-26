@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -38,7 +38,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="mx-auto mt-20 w-full max-w-sm">
+    <div className="mx-auto mt-14 w-full max-w-sm">
+      <div className="mb-5 space-y-1 text-center">
+        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">EduScore</p>
+        <h1 className="text-2xl font-semibold tracking-tight">登录管理后台</h1>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>系统登录</CardTitle>
@@ -54,7 +58,7 @@ export default function LoginPage() {
               <Label htmlFor="password">密码</Label>
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            {message && <p className="text-sm text-rose-600">{message}</p>}
+            {message && <p className="text-sm text-destructive">{message}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? <Loader2 className="animate-spin" /> : <LogIn />}
               登录

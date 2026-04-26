@@ -4,6 +4,7 @@ export type DashboardStudentRow = {
   studentId: string;
   classId: string;
   className: string;
+  classColor: string;
   studentName: string;
   scores: ScoreMap;
   progressDelta: number | null;
@@ -27,7 +28,7 @@ export type ClassDetail = {
 export type AnalysisPageData = {
   selectedExamId: string;
   exams: { id: string; name: string; date: string }[];
-  classAverages: { classId: string; className: string; average: number }[];
+  classAverages: { classId: string; className: string; classColor: string; average: number }[];
   distribution: { bucket: string; count: number }[];
   rankings: Array<{
     rank: number;
@@ -42,17 +43,25 @@ export type AnalysisPageData = {
     studentId: string;
     studentName: string;
     className: string;
-    current: number;
-    previous: number;
-    delta: number;
+    classColor: string;
+    currentRank: number;
+    previousRank: number;
+    rankDelta: number;
+    currentScore: number;
+    previousScore: number;
+    scoreDelta: number;
   }>;
   declineTop5: Array<{
     studentId: string;
     studentName: string;
     className: string;
-    current: number;
-    previous: number;
-    delta: number;
+    classColor: string;
+    currentRank: number;
+    previousRank: number;
+    rankDelta: number;
+    currentScore: number;
+    previousScore: number;
+    scoreDelta: number;
   }>;
   examProgressTop5: Array<{
     examId: string;
@@ -63,9 +72,12 @@ export type AnalysisPageData = {
       studentName: string;
       className: string;
       classColor: string;
-      previous: number;
-      current: number;
-      delta: number;
+      previousRank: number;
+      currentRank: number;
+      rankDelta: number;
+      previousScore: number;
+      currentScore: number;
+      scoreDelta: number;
     }>;
   }>;
 };

@@ -10,6 +10,14 @@ function avg(values: number[]) {
   return toFixed(values.reduce((sum, v) => sum + v, 0) / values.length);
 }
 
+function createRankMap(rows: Array<{ studentId: string; score: number }>) {
+  return new Map(
+    [...rows]
+      .sort((a, b) => b.score - a.score)
+      .map((row, index) => [row.studentId, index + 1] as const)
+  );
+}
+
 export async function getDashboardData() {
   noStore();
   const [classes, exams, students] = await Promise.all([
@@ -44,6 +52,7 @@ export async function getDashboardData() {
       studentId: student.id,
       classId: student.classId,
       className: student.class.name,
+      classColor: student.class.color,
       studentName: student.name,
       scores,
       progressDelta,
@@ -178,6 +187,7 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
     return {
       classId: classItem.id,
       className: classItem.name,
+      classColor: classItem.color,
       average: avg(classScores)
     };
   });
@@ -224,23 +234,41 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
         }
       }
     });
-    const prevMap = new Map(prevScores.map((item) => [item.studentId, item.score]));
+    const currentRankMap = createRankMap(scores);
+    const previousRankMap = createRankMap(prevScores);
+    const previousScoreMap = new Map(prevScores.map((item) => [item.studentId, item.score]));
     const deltaRows = scores
-      .filter((item) => prevMap.has(item.studentId))
+      .filter((item) => previousScoreMap.has(item.studentId))
       .map((item) => {
-        const previous = prevMap.get(item.studentId) ?? item.score;
+        const previousScore = previousScoreMap.get(item.studentId);
+        const currentRank = currentRankMap.get(item.studentId);
+        const previousRank = previousRankMap.get(item.studentId);
+        if (previousScore === undefined || currentRank === undefined || previousRank === undefined) {
+          return null;
+        }
         return {
           studentId: item.studentId,
           studentName: item.student.name,
           className: item.student.class.name,
-          current: item.score,
-          previous,
-          delta: toFixed(item.score - previous)
+          classColor: item.student.class.color,
+          currentRank,
+          previousRank,
+          rankDelta: previousRank - currentRank,
+          currentScore: item.score,
+          previousScore,
+          scoreDelta: toFixed(item.score - previousScore)
         };
-      });
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null);
 
-    improveTop5 = [...deltaRows].sort((a, b) => b.delta - a.delta).slice(0, 5);
-    declineTop5 = [...deltaRows].sort((a, b) => a.delta - b.delta).slice(0, 5);
+    improveTop5 = [...deltaRows]
+      .filter((row) => row.rankDelta > 0)
+      .sort((a, b) => b.rankDelta - a.rankDelta)
+      .slice(0, 5);
+    declineTop5 = [...deltaRows]
+      .filter((row) => row.rankDelta < 0)
+      .sort((a, b) => a.rankDelta - b.rankDelta)
+      .slice(0, 5);
   }
 
   if (exams.length > 1) {
@@ -271,21 +299,33 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
         const previousExam = exams[index - 1];
         const currentMap = examScoreMap.get(exam.id) ?? new Map();
         const previousMap = examScoreMap.get(previousExam.id) ?? new Map();
+        const currentRankMap = createRankMap([...currentMap.values()]);
+        const previousRankMap = createRankMap([...previousMap.values()]);
         const rows = [...currentMap.values()]
           .filter((current) => previousMap.has(current.studentId))
           .map((current) => {
             const previous = previousMap.get(current.studentId)!;
+            const currentRank = currentRankMap.get(current.studentId);
+            const previousRank = previousRankMap.get(current.studentId);
+            if (currentRank === undefined || previousRank === undefined) {
+              return null;
+            }
             return {
               studentId: current.studentId,
               studentName: current.student.name,
               className: current.student.class.name,
               classColor: current.student.class.color,
-              previous: previous.score,
-              current: current.score,
-              delta: toFixed(current.score - previous.score)
+              previousRank,
+              currentRank,
+              rankDelta: previousRank - currentRank,
+              previousScore: previous.score,
+              currentScore: current.score,
+              scoreDelta: toFixed(current.score - previous.score)
             };
           })
-          .sort((a, b) => b.delta - a.delta)
+          .filter((row): row is NonNullable<typeof row> => row !== null)
+          .filter((row) => row.rankDelta > 0)
+          .sort((a, b) => b.rankDelta - a.rankDelta)
           .slice(0, 5);
 
         return {
