@@ -193,7 +193,8 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
       rankings: [],
       improveTop5: [],
       declineTop5: [],
-      examProgressTop5: []
+      examProgressTop5: [],
+      classComparison: { exams: [], metrics: [] }
     };
   }
 
@@ -375,7 +376,11 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
     improveTop5,
     declineTop5,
     examProgressTop5,
-    classComparison: await getClassComparisonData(exams)
+    classComparison: await getClassComparisonData(exams.map((item) => ({
+      id: item.id,
+      name: item.name,
+      date: item.date.toISOString().slice(0, 10)
+    })))
   };
 }
 

@@ -39,7 +39,7 @@ export function StudentDetailClient({ studentId }: Props) {
 
   const latestRecord = data?.records.filter((r) => r.score !== null).at(-1);
   const firstRecord = data?.records.filter((r) => r.score !== null)[0];
-  const scoreDelta = latestRecord?.score !== undefined && firstRecord?.score !== undefined ? latestRecord.score - firstRecord.score : null;
+  const scoreDelta = latestRecord?.score != null && firstRecord?.score != null ? latestRecord.score - firstRecord.score : null;
   const rankDelta = latestRecord?.rank && firstRecord?.rank ? firstRecord.rank - latestRecord.rank : null;
 
   function openEdit(record: StudentDetail["records"][number]) {
@@ -177,7 +177,7 @@ export function StudentDetailClient({ studentId }: Props) {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="exam" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
                   <YAxis reversed domain={[1, "auto"]} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }} formatter={(v: number | null) => [v === null ? "缺考" : `第${v}名`, "排名"]} />
+                  <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }} formatter={(v) => [v === null || v === undefined ? "缺考" : `第${v}名`, "排名"]} />
                   <Line type="monotone" dataKey="rank" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} connectNulls />
                 </LineChart>
               </ResponsiveContainer>

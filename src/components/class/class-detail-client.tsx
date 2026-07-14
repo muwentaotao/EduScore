@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -65,8 +65,8 @@ function scoreTag(score: number | null, isAbsent: boolean) {
   return <span className="rounded-md bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">不及格</span>;
 }
 
-function getExamStat(data: ClassDetail, examId: string | null): ExamStat {
-  if (!examId) return { avg: 0, median: 0, passRate: 0, excellentRate: 0, max: 0, min: 0 };
+function getExamStat(data: ClassDetail | null, examId: string | null): ExamStat {
+  if (!data || !examId) return { avg: 0, median: 0, passRate: 0, excellentRate: 0, max: 0, min: 0 };
   const scores = data.students
     .map((s) => (s.absentByExam[examId] ? null : s.scores[examId]))
     .filter((v): v is number => typeof v === "number")
@@ -310,7 +310,7 @@ export function ClassDetailClient({ classId }: Props) {
                 <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }} />
                 <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                   {distributionData.map((d, i) => (
-                    <cell key={`cell-${i}`} fill={d.color} />
+                    <Cell key={`cell-${i}`} fill={d.color} />
                   ))}
                 </Bar>
               </BarChart>
