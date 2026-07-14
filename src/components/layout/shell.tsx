@@ -1,4 +1,5 @@
 ﻿"use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import type { ComponentType, ReactNode } from "react";
 import type { Route } from "next";
@@ -7,48 +8,69 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   BookOpenText,
+  ChevronLeft,
+  ChevronRight,
   LayoutDashboard,
   LogOut,
   Menu,
   School,
   Settings2,
+  Upload,
   UserRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
 
 const navItems: { href: Route; label: string; icon: ComponentType<{ size?: number }> }[] = [
   { href: "/", label: "仪表盘", icon: LayoutDashboard },
   { href: "/analysis", label: "年级分析", icon: BarChart3 },
   { href: "/class", label: "班级成绩", icon: School },
-  { href: "/class/manage", label: "班级管理", icon: Settings2 }
+  { href: "/import", label: "成绩导入", icon: Upload },
+  { href: "/class/manage", label: "班级管理", icon: Settings2 },
+  { href: "/students", label: "学生管理", icon: UserRound }
 ];
 
-function SideNav({ pathname }: { pathname: string }) {
+function BrandBlock({ compact = false }: { compact?: boolean }) {
   return (
-    <nav className="space-y-1.5">
+    <div className={cn("flex items-center gap-2.5", compact ? "justify-center" : "px-1")}>
+      <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+        <BookOpenText size={18} />
+      </div>
+      {!compact && <span className="text-lg font-bold tracking-tight text-foreground">EduScore</span>}
+    </div>
+  );
+}
+
+function NavList({ pathname, collapsed }: { pathname: string; collapsed: boolean }) {
+  return (
+    <nav className="flex flex-col gap-1">
       {navItems.map((item) => {
         const active =
           item.href === "/class"
             ? pathname === "/class" || (pathname.startsWith("/class/") && !pathname.startsWith("/class/manage"))
-            : pathname === item.href;
+            : item.href === "/students"
+              ? pathname === "/students" || pathname.startsWith("/students/")
+              : pathname === item.href;
         const Icon = item.icon;
-
         return (
           <Link
             href={item.href}
             key={item.href}
             className={cn(
-              "flex items-center gap-3 rounded-xl px-3.5 py-2.5 transition",
+              "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
               active
-                ? "bg-blue-100/90 text-blue-700"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
+            title={collapsed ? item.label : undefined}
           >
             <Icon size={18} />
-            <span className="text-base font-medium">{item.label}</span>
+            {!collapsed && <span>{item.label}</span>}
+            {active && collapsed && (
+              <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-primary" />
+            )}
           </Link>
         );
       })}
@@ -56,100 +78,130 @@ function SideNav({ pathname }: { pathname: string }) {
   );
 }
 
-function LogoutNavItem() {
+function LogoutNavItem({ collapsed }: { collapsed: boolean }) {
   const router = useRouter();
-
   async function onLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/login");
     router.refresh();
   }
-
   return (
     <Button
       variant="ghost"
       onClick={onLogout}
-      className="w-full justify-start rounded-xl px-3 py-2 text-base font-normal text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+      className={cn(
+        "w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
+        collapsed && "justify-center"
+      )}
     >
-      <LogOut size={16} />
-      退出登录
+      <LogOut size={18} />
+      {!collapsed && <span>退出登录</span>}
     </Button>
   );
 }
 
-function BrandBlock({ compact = false }: { compact?: boolean }) {
+function UserBlock({ collapsed }: { collapsed: boolean }) {
   return (
-    <div className={cn("flex items-center gap-3 rounded-2xl p-1", compact ? "mb-0" : "mb-7")}>
-      <div className="flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-sm">
-        <BookOpenText size={20} />
+    <div className={cn("flex items-center gap-3 rounded-lg bg-muted/60 p-2.5", collapsed && "justify-center p-2")}>
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <UserRound size={16} />
       </div>
-      <div>
-        <p className={cn("font-bold text-blue-600", compact ? "text-2xl" : "text-3xl")}>EduScore</p>
-        <p className={cn("text-slate-500", compact ? "text-xs" : "text-sm")}>教学成绩分析系统</p>
-      </div>
+      {!collapsed && (
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">历史老师</p>
+          <p className="text-xs text-muted-foreground">教师</p>
+        </div>
+      )}
     </div>
-  );
-}
-
-function TeacherBlock() {
-  return (
-    <Card className="border border-slate-200 bg-white/90">
-      <CardContent className="flex items-center gap-3 p-3">
-        <div className="flex size-11 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-          <UserRound size={21} />
-        </div>
-        <div>
-          <p className="font-medium text-slate-700">历史老师</p>
-          <p className="text-xs text-emerald-600">教师</p>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const saved = localStorage.getItem("eduscore_sidebar_collapsed");
+    if (saved) setCollapsed(saved === "true");
+  }, []);
+
+  function toggleSidebar() {
+    const next = !collapsed;
+    setCollapsed(next);
+    localStorage.setItem("eduscore_sidebar_collapsed", String(next));
+  }
 
   if (pathname === "/login") {
     return <main className="min-h-screen p-4 md:p-6">{children}</main>;
   }
 
   return (
-    <div className="min-h-screen md:flex">
-      <header className="sticky top-0 z-40 border-b bg-white/95 px-4 py-3 backdrop-blur md:hidden">
-        <div className="flex items-center justify-between">
-          <BrandBlock compact />
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Menu size={16} />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[290px] bg-slate-50">
-              <SheetTitle className="sr-only">主导航菜单</SheetTitle>
-              <div className="flex h-full flex-col">
-                <BrandBlock />
-                <SideNav pathname={pathname} />
-                <div className="mt-auto space-y-3 border-t pt-3">
-                  <TeacherBlock />
-                  <LogoutNavItem />
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+    <div className="flex min-h-screen">
+      {/* Desktop sidebar */}
+      <aside
+        className={cn(
+          "hidden flex-col border-r bg-card transition-all duration-200 md:flex",
+          collapsed ? "w-[72px] px-2 py-4" : "w-[220px] px-3 py-4"
+        )}
+      >
+        <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
+          <BrandBlock compact={collapsed} />
+          {!collapsed && (
+            <button
+              onClick={toggleSidebar}
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          )}
         </div>
-      </header>
-
-      <aside className="hidden w-[320px] flex-col border-r bg-slate-50/90 px-4 py-6 md:flex">
-        <BrandBlock />
-        <SideNav pathname={pathname} />
-        <div className="mt-auto space-y-3 border-t pt-3">
-          <TeacherBlock />
-          <LogoutNavItem />
+        {collapsed && (
+          <button
+            onClick={toggleSidebar}
+            className="mx-auto mt-4 flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ChevronRight size={18} />
+          </button>
+        )}
+        <div className="mt-8 flex-1">
+          <NavList pathname={pathname} collapsed={collapsed} />
+        </div>
+        <div className="mt-auto space-y-2 border-t pt-3">
+          <UserBlock collapsed={collapsed} />
+          <LogoutNavItem collapsed={collapsed} />
         </div>
       </aside>
 
-      <main className="flex-1 p-4 md:p-6">{children}</main>
+      {/* Mobile header */}
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-card px-4 md:hidden">
+        <BrandBlock compact />
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <Menu size={18} />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[220px] bg-card p-3">
+            <SheetTitle className="sr-only">主导航菜单</SheetTitle>
+            <div className="flex h-full flex-col">
+              <BrandBlock />
+              <div className="mt-6 flex-1">
+                <NavList pathname={pathname} collapsed={false} />
+              </div>
+              <div className="mt-auto space-y-2 border-t pt-3">
+                <UserBlock collapsed={false} />
+                <LogoutNavItem collapsed={false} />
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </header>
+
+      <main className="flex-1 overflow-auto bg-background p-4 md:p-6">
+        <div className="mx-auto max-w-7xl">{children}</div>
+      </main>
     </div>
   );
 }

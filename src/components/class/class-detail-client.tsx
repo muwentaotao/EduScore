@@ -2,29 +2,17 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   ArrowDownRight,
   ArrowUpRight,
   Download,
   Loader2,
-  Medal,
-  PieChart,
+  Minus,
+  Pencil,
   Search,
   Trash2,
-  TrendingUp,
-  Trophy
+  TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,17 +20,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScoreImportForm } from "@/components/class/score-import-form";
 import type { ClassDetail } from "@/lib/types";
 
 type Props = { classId: string };
 
 type ExamStat = {
   avg: number;
+  median: number;
+  passRate: number;
+  excellentRate: number;
   max: number;
   min: number;
-  excellentRate: number;
-  topStudentName: string;
 };
 
 function toScoreText(value: number) {
@@ -50,59 +38,50 @@ function toScoreText(value: number) {
 }
 
 function deltaBadge(delta: number, suffix = "") {
-  if (!Number.isFinite(delta)) {
-    return <span className="text-muted-foreground">-</span>;
+  if (!Number.isFinite(delta) || delta === 0) {
+    return <span className="text-xs text-muted-foreground">-</span>;
   }
   if (delta > 0) {
     return (
-      <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
-        <ArrowUpRight size={14} />
-        {toScoreText(delta)}
-        {suffix}
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold text-emerald-600">
+        <ArrowUpRight size={12} />
+        {toScoreText(delta)}{suffix}
       </span>
     );
   }
-  if (delta < 0) {
-    return (
-      <span className="inline-flex items-center gap-1 font-semibold text-rose-600">
-        <ArrowDownRight size={14} />
-        {toScoreText(Math.abs(delta))}
-        {suffix}
-      </span>
-    );
-  }
-  return <span className="font-semibold text-muted-foreground">0{suffix}</span>;
+  return (
+    <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-50 px-1.5 py-0.5 text-xs font-semibold text-rose-600">
+      <ArrowDownRight size={12} />
+      {toScoreText(Math.abs(delta))}{suffix}
+    </span>
+  );
 }
 
-function getExamStat(data: ClassDetail | null, examId: string | null): ExamStat {
-  if (!data || !examId) {
-    return { avg: 0, max: 0, min: 0, excellentRate: 0, topStudentName: "-" };
-  }
+function scoreTag(score: number | null, isAbsent: boolean) {
+  if (isAbsent || score === null) return <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-500">缺考</span>;
+  if (score >= 90) return <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">优秀</span>;
+  if (score >= 70) return <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">良好</span>;
+  if (score >= 60) return <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">及格</span>;
+  return <span className="rounded-md bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">不及格</span>;
+}
 
-  const rows = data.students
-    .map((student) => ({
-      name: student.studentName,
-      score: student.absentByExam[examId] ? null : student.scores[examId]
-    }))
-    .filter((item): item is { name: string; score: number } => typeof item.score === "number");
-
-  if (!rows.length) {
-    return { avg: 0, max: 0, min: 0, excellentRate: 0, topStudentName: "-" };
-  }
-
-  const total = rows.reduce((sum, item) => sum + item.score, 0);
-  const avg = total / rows.length;
-  const max = Math.max(...rows.map((item) => item.score));
-  const min = Math.min(...rows.map((item) => item.score));
-  const excellentCount = rows.filter((item) => item.score >= 90).length;
-  const topStudent = rows.find((item) => item.score === max);
-
+function getExamStat(data: ClassDetail, examId: string | null): ExamStat {
+  if (!examId) return { avg: 0, median: 0, passRate: 0, excellentRate: 0, max: 0, min: 0 };
+  const scores = data.students
+    .map((s) => (s.absentByExam[examId] ? null : s.scores[examId]))
+    .filter((v): v is number => typeof v === "number")
+    .sort((a, b) => a - b);
+  if (!scores.length) return { avg: 0, median: 0, passRate: 0, excellentRate: 0, max: 0, min: 0 };
+  const total = scores.reduce((a, b) => a + b, 0);
+  const mid = Math.floor(scores.length / 2);
+  const median = scores.length % 2 === 0 ? (scores[mid - 1] + scores[mid]) / 2 : scores[mid];
   return {
-    avg,
-    max,
-    min,
-    excellentRate: (excellentCount / rows.length) * 100,
-    topStudentName: topStudent?.name ?? "-"
+    avg: total / scores.length,
+    median,
+    passRate: (scores.filter((s) => s >= 60).length / scores.length) * 100,
+    excellentRate: (scores.filter((s) => s >= 90).length / scores.length) * 100,
+    max: scores[scores.length - 1],
+    min: scores[0]
   };
 }
 
@@ -113,73 +92,6 @@ export function ClassDetailClient({ classId }: Props) {
   const [deletingExamId, setDeletingExamId] = useState<string | null>(null);
   const [keyword, setKeyword] = useState("");
   const [selectedExamId, setSelectedExamId] = useState("");
-
-  const averageExams = useMemo(() => (data ? data.examHeaders.slice(-10) : []), [data]);
-  const displayExams = useMemo(() => (data ? data.examHeaders.slice(-6) : []), [data]);
-  const displayAverages = useMemo(
-    () => (data ? data.averageByExam.filter((item) => averageExams.some((exam) => exam.id === item.examId)) : []),
-    [data, averageExams]
-  );
-
-  const selectedExam = useMemo(
-    () => data?.examHeaders.find((exam) => exam.id === selectedExamId) ?? data?.examHeaders.at(-1) ?? null,
-    [data, selectedExamId]
-  );
-  const previousExam = useMemo(() => {
-    if (!data || !selectedExam) {
-      return null;
-    }
-    const selectedIndex = data.examHeaders.findIndex((exam) => exam.id === selectedExam.id);
-    return selectedIndex > 0 ? data.examHeaders[selectedIndex - 1] : null;
-  }, [data, selectedExam]);
-
-  const trendStudent = useMemo(
-    () => data?.students.find((s) => s.studentId === trendStudentId) ?? null,
-    [data, trendStudentId]
-  );
-
-  const trendSeries = useMemo(() => {
-    if (!trendStudent) {
-      return [];
-    }
-    return averageExams
-      .filter((exam) => !trendStudent.absentByExam[exam.id])
-      .map((exam) => ({
-        exam: exam.name,
-        score: trendStudent.scores[exam.id] ?? null
-      }))
-      .filter((item) => item.score !== null);
-  }, [averageExams, trendStudent]);
-
-  const latestStat = useMemo(() => getExamStat(data, selectedExam?.id ?? null), [data, selectedExam?.id]);
-  const previousStat = useMemo(() => getExamStat(data, previousExam?.id ?? null), [data, previousExam?.id]);
-
-  const studentsForTable = useMemo(() => {
-    if (!data) {
-      return [];
-    }
-
-    const list = data.students
-      .filter((student) => student.studentName.toLowerCase().includes(keyword.trim().toLowerCase()))
-      .map((student) => {
-        const latestScore = selectedExam?.id ? student.scores[selectedExam.id] : null;
-
-        const numeric = displayExams
-          .map((exam) => (student.absentByExam[exam.id] ? null : student.scores[exam.id]))
-          .filter((item): item is number => typeof item === "number");
-
-        const trendDelta = numeric.length >= 2 ? numeric[numeric.length - 1] - numeric[numeric.length - 2] : 0;
-
-        return {
-          student,
-          latestScore: typeof latestScore === "number" ? latestScore : -1,
-          trendDelta
-        };
-      })
-      .sort((a, b) => b.latestScore - a.latestScore);
-
-    return list;
-  }, [data, keyword, selectedExam, displayExams]);
 
   async function fetchData() {
     setLoading(true);
@@ -194,20 +106,73 @@ export function ClassDetailClient({ classId }: Props) {
   }, [classId]);
 
   useEffect(() => {
-    if (!data) {
-      return;
-    }
-    const exists = data.examHeaders.some((exam) => exam.id === selectedExamId);
-    if (!selectedExamId || !exists) {
+    if (data && !selectedExamId) {
       setSelectedExamId(data.examHeaders.at(-1)?.id ?? "");
     }
   }, [data, selectedExamId]);
 
+  const displayExams = useMemo(() => (data ? data.examHeaders.slice(-6) : []), [data]);
+  const selectedExam = useMemo(
+    () => data?.examHeaders.find((e) => e.id === selectedExamId) ?? data?.examHeaders.at(-1) ?? null,
+    [data, selectedExamId]
+  );
+  const previousExam = useMemo(() => {
+    if (!data || !selectedExam) return null;
+    const idx = data.examHeaders.findIndex((e) => e.id === selectedExam.id);
+    return idx > 0 ? data.examHeaders[idx - 1] : null;
+  }, [data, selectedExam]);
+
+  const latestStat = useMemo(() => getExamStat(data, selectedExam?.id ?? null), [data, selectedExam?.id]);
+  const previousStat = useMemo(() => getExamStat(data, previousExam?.id ?? null), [data, previousExam?.id]);
+
+  const distributionData = useMemo(() => {
+    if (!data || !selectedExam) return [];
+    const buckets = [
+      { key: "90-100", min: 90, color: "#10b981" },
+      { key: "70-89", min: 70, color: "#3b82f6" },
+      { key: "60-69", min: 60, color: "#f59e0b" },
+      { key: "<60", min: 0, color: "#f43f5e" }
+    ];
+    return buckets.map((b, i) => {
+      const max = i === 0 ? 100 : buckets[i - 1].min - 0.01;
+      const count = data.students.filter((s) => {
+        const score = s.absentByExam[selectedExam.id] ? null : s.scores[selectedExam.id];
+        return typeof score === "number" && score >= b.min && score <= max;
+      }).length;
+      return { name: b.key, count, color: b.color };
+    });
+  }, [data, selectedExam]);
+
+  const studentsForTable = useMemo(() => {
+    if (!data) return [];
+    return data.students
+      .filter((s) => s.studentName.toLowerCase().includes(keyword.trim().toLowerCase()))
+      .map((s) => {
+        const latestScore = selectedExam?.id ? s.scores[selectedExam.id] : null;
+        const numeric = displayExams
+          .map((e) => (s.absentByExam[e.id] ? null : s.scores[e.id]))
+          .filter((v): v is number => typeof v === "number");
+        const trendDelta = numeric.length >= 2 ? numeric[numeric.length - 1] - numeric[numeric.length - 2] : 0;
+        return { student: s, latestScore, trendDelta };
+      })
+      .sort((a, b) => (b.latestScore ?? -1) - (a.latestScore ?? -1));
+  }, [data, keyword, selectedExam, displayExams]);
+
+  const trendStudent = useMemo(
+    () => data?.students.find((s) => s.studentId === trendStudentId) ?? null,
+    [data, trendStudentId]
+  );
+
+  const trendSeries = useMemo(() => {
+    if (!trendStudent) return [];
+    return data!.examHeaders.slice(-10)
+      .filter((e) => !trendStudent.absentByExam[e.id])
+      .map((e) => ({ exam: e.name, score: trendStudent.scores[e.id] ?? null }))
+      .filter((item) => item.score !== null);
+  }, [trendStudent, data]);
+
   async function deleteExam(examId: string, examName: string) {
-    const ok = window.confirm(`确认删除考试“${examName}”及其所有成绩？`);
-    if (!ok) {
-      return;
-    }
+    if (!window.confirm(`确认删除考试「${examName}」及其所有成绩？`)) return;
     setDeletingExamId(examId);
     await fetch(`/api/exam/${examId}`, { method: "DELETE" });
     setDeletingExamId(null);
@@ -224,211 +189,240 @@ export function ClassDetailClient({ classId }: Props) {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-6 animate-fadeIn">
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight">{data.className} · <span className="text-primary">成绩分析</span></h1>
-          <p className="mt-2 text-sm text-muted-foreground">单科系统，按姓名自动匹配/创建考生。列表与趋势最多展示最近 10 场考试。</p>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: data.classColor }} />
+            <h1 className="text-2xl font-bold tracking-tight">{data.className}</h1>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{data.students.length} 名学生 · {data.examHeaders.length} 场考试</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           <Select value={selectedExamId} onValueChange={setSelectedExamId}>
-            <SelectTrigger className="h-11 w-[240px] border-slate-200 bg-white/90">
-              <SelectValue placeholder="选择考试查看统计" />
+            <SelectTrigger className="h-9 w-[200px]">
+              <SelectValue placeholder="选择考试" />
             </SelectTrigger>
             <SelectContent>
-              {data.examHeaders.map((exam) => (
-                <SelectItem key={exam.id} value={exam.id}>
-                  {exam.name}（{exam.date}）
-                </SelectItem>
+              {data.examHeaders.map((e) => (
+                <SelectItem key={e.id} value={e.id}>{e.name}（{e.date}）</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <a href="#import-section">
-            <Button className="h-11 px-5">导入成绩</Button>
-          </a>
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/api/export?examId=${selectedExam?.id ?? ""}`}>
+              <Download size={16} />
+              导出
+            </a>
+          </Button>
         </div>
       </div>
 
-      <Card id="import-section" className="border-slate-200/80 bg-white/90">
-        <CardContent className="pt-5">
-          <ScoreImportForm
-            classId={classId}
-            examNameOptions={data.examHeaders.map((exam) => exam.name)}
-            onImported={fetchData}
-          />
-        </CardContent>
-      </Card>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="border-slate-200/80 bg-white/90">
-          <CardContent className="flex items-start gap-3 pt-5">
-            <div className="rounded-2xl bg-blue-500 p-3 text-white">
-              <TrendingUp size={22} />
+      {/* KPI cards */}
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-sm font-medium text-muted-foreground">班级平均分</p>
+            <div className="mt-2 flex items-end justify-between">
+              <p className="text-3xl font-bold tracking-tight">{toScoreText(latestStat.avg)}</p>
+              {deltaBadge(latestStat.avg - previousStat.avg)}
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">班级平均分</p>
-              <p className="text-5xl font-bold leading-none">{toScoreText(latestStat.avg)}</p>
-              <p className="mt-3 text-sm text-muted-foreground">
-                {selectedExam ? `考试：${selectedExam.name}` : "暂无考试"} · 较上次 {deltaBadge(latestStat.avg - previousStat.avg)}
-              </p>
-            </div>
+            <p className="mt-1 text-xs text-muted-foreground">较上次 {previousExam?.name ?? "-"}</p>
           </CardContent>
         </Card>
-
-        <Card className="border-slate-200/80 bg-white/90">
-          <CardContent className="flex items-start gap-3 pt-5">
-            <div className="rounded-2xl bg-emerald-500 p-3 text-white">
-              <Trophy size={22} />
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-sm font-medium text-muted-foreground">及格率</p>
+            <div className="mt-2 flex items-end justify-between">
+              <p className="text-3xl font-bold tracking-tight">{toScoreText(latestStat.passRate)}%</p>
+              {deltaBadge(latestStat.passRate - previousStat.passRate, "%")}
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">最高分</p>
-              <p className="text-5xl font-bold leading-none">{toScoreText(latestStat.max)}</p>
-              <p className="mt-3 text-sm text-muted-foreground">最高分学生：{latestStat.topStudentName}</p>
-            </div>
+            <p className="mt-1 text-xs text-muted-foreground">≥60 分人数占比</p>
           </CardContent>
         </Card>
-
-        <Card className="border-slate-200/80 bg-white/90">
-          <CardContent className="flex items-start gap-3 pt-5">
-            <div className="rounded-2xl bg-amber-500 p-3 text-white">
-              <Medal size={22} />
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-sm font-medium text-muted-foreground">优秀率</p>
+            <div className="mt-2 flex items-end justify-between">
+              <p className="text-3xl font-bold tracking-tight">{toScoreText(latestStat.excellentRate)}%</p>
+              {deltaBadge(latestStat.excellentRate - previousStat.excellentRate, "%")}
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">最低分</p>
-              <p className="text-5xl font-bold leading-none">{toScoreText(latestStat.min)}</p>
-              <p className="mt-3 text-sm text-muted-foreground">较上次 {deltaBadge(latestStat.min - previousStat.min)}</p>
-            </div>
+            <p className="mt-1 text-xs text-muted-foreground">≥90 分人数占比</p>
           </CardContent>
         </Card>
-
-        <Card className="border-slate-200/80 bg-white/90">
-          <CardContent className="flex items-start gap-3 pt-5">
-            <div className="rounded-2xl bg-violet-500 p-3 text-white">
-              <PieChart size={22} />
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-sm font-medium text-muted-foreground">中位数</p>
+            <div className="mt-2 flex items-end justify-between">
+              <p className="text-3xl font-bold tracking-tight">{toScoreText(latestStat.median)}</p>
+              {deltaBadge(latestStat.median - previousStat.median)}
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">优秀率（≥90分）</p>
-              <p className="text-5xl font-bold leading-none">{toScoreText(latestStat.excellentRate)}%</p>
-              <p className="mt-3 text-sm text-muted-foreground">
-                较上次 {deltaBadge(latestStat.excellentRate - previousStat.excellentRate, "%")}
-              </p>
-            </div>
+            <p className="mt-1 text-xs text-muted-foreground">最高分 {latestStat.max} · 最低分 {latestStat.min}</p>
           </CardContent>
         </Card>
       </section>
 
-      <Card className="border-slate-200/80 bg-white/90">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>班级平均分趋势（最近 10 场）</CardTitle>
-          <Button variant="outline">查看更多</Button>
-        </CardHeader>
-        <CardContent className="h-[290px] sm:h-[340px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={displayAverages}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="examName" />
-              <YAxis domain={[40, 100]} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="average" name="平均分" fill="#5fa6ff" radius={[8, 8, 0, 0]} barSize={48} />
-              <Line type="monotone" dataKey="average" name="趋势线" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 4 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {/* Charts */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>均分趋势</CardTitle>
+            <CardDescription>最近 10 场考试班级平均分变化</CardDescription>
+          </CardHeader>
+          <CardContent className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.averageByExam.slice(-10)}>
+                <defs>
+                  <linearGradient id="classAvgGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={data.classColor} stopOpacity={0.2} />
+                    <stop offset="95%" stopColor={data.classColor} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="examName" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis domain={["dataMin - 5", "dataMax + 5"]} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }} />
+                <Line
+                  type="monotone"
+                  dataKey="average"
+                  stroke={data.classColor}
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: data.classColor }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
-      <Card className="border-slate-200/80 bg-white/90">
-        <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle>学生成绩表（最近 6 场）</CardTitle>
-          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-            <div className="relative w-full sm:w-[240px]">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="搜索学生姓名" className="h-10 pl-9" />
-            </div>
-            <a href={`/api/export?examId=${selectedExam?.id ?? ""}`}>
-              <Button variant="outline" className="h-10">
-                <Download />
-                导出表格
-              </Button>
-            </a>
+        <Card>
+          <CardHeader>
+            <CardTitle>分数段分布</CardTitle>
+            <CardDescription>{selectedExam?.name} 各分数段人数</CardDescription>
+          </CardHeader>
+          <CardContent className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={distributionData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }} />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                  {distributionData.map((d, i) => (
+                    <cell key={`cell-${i}`} fill={d.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Student table */}
+      <Card>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>学生成绩表</CardTitle>
+            <CardDescription>最近 {displayExams.length} 场考试成绩</CardDescription>
+          </div>
+          <div className="relative w-full sm:w-[240px]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="搜索学生姓名" className="h-9 pl-9" />
           </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>排名</TableHead>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-14">排名</TableHead>
                 <TableHead>姓名</TableHead>
-                {displayExams.map((exam) => (
-                  <TableHead key={exam.id}>{exam.name}</TableHead>
+                {displayExams.map((e) => (
+                  <TableHead key={e.id}>{e.name}</TableHead>
                 ))}
+                <TableHead>状态</TableHead>
                 <TableHead>趋势</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {studentsForTable.map((row, index) => {
-                const trendLabel = row.trendDelta > 0 ? "上升" : row.trendDelta < 0 ? "下降" : "持平";
-                const trendClass = row.trendDelta > 0 ? "text-emerald-600" : row.trendDelta < 0 ? "text-rose-600" : "text-muted-foreground";
-
-                return (
-                  <TableRow key={row.student.studentId}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell className="font-medium">{row.student.studentName}</TableCell>
-                    {displayExams.map((exam) => (
-                      <TableCell key={exam.id}>
-                        {row.student.absentByExam[exam.id] ? "缺考" : (row.student.scores[exam.id] ?? "-")}
-                      </TableCell>
-                    ))}
-                    <TableCell>
-                      <Button variant="ghost" className={`h-8 px-2 ${trendClass}`} onClick={() => setTrendStudentId(row.student.studentId)}>
-                        <TrendingUp className="size-4" />
-                        {trendLabel}
-                      </Button>
+              {studentsForTable.map((row, index) => (
+                <TableRow key={row.student.studentId} className="group">
+                  <TableCell className="font-mono text-sm font-medium text-muted-foreground">{index + 1}</TableCell>
+                  <TableCell className="font-medium">{row.student.studentName}</TableCell>
+                  {displayExams.map((e) => (
+                    <TableCell key={e.id} className="font-mono text-sm">
+                      {row.student.absentByExam[e.id] ? "-" : (row.student.scores[e.id] ?? "-")}
                     </TableCell>
-                  </TableRow>
-                );
-              })}
+                  ))}
+                  <TableCell>
+                    {scoreTag(
+                      selectedExam ? row.student.scores[selectedExam.id] ?? null : null,
+                      selectedExam ? row.student.absentByExam[selectedExam.id] ?? false : false
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 px-2 text-xs"
+                      onClick={() => setTrendStudentId(row.student.studentId)}
+                    >
+                      <TrendingUp size={14} />
+                      {row.trendDelta > 0 ? `+${row.trendDelta}` : row.trendDelta < 0 ? row.trendDelta : "持平"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {studentsForTable.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                    没有匹配的学生
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
-          {studentsForTable.length === 0 && <p className="pt-4 text-sm text-muted-foreground">没有匹配的学生。</p>}
         </CardContent>
       </Card>
 
-      <Card className="border-slate-200/80 bg-white/90">
+      {/* Exam management */}
+      <Card>
         <CardHeader>
           <CardTitle>考试管理</CardTitle>
-          <CardDescription>可直接删除某次考试及其成绩。</CardDescription>
+          <CardDescription>删除某次考试及其成绩</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {data.examHeaders.map((exam) => (
-            <Button
-              key={exam.id}
-              variant="outline"
-              className="h-9"
-              onClick={() => deleteExam(exam.id, exam.name)}
-              disabled={deletingExamId === exam.id}
-            >
-              {deletingExamId === exam.id ? <Loader2 className="animate-spin" /> : <Trash2 className="size-4" />}
-              {exam.name}
-            </Button>
-          ))}
-          {data.examHeaders.length === 0 && <p className="text-sm text-muted-foreground">暂无考试数据</p>}
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {data.examHeaders.map((e) => (
+              <Button
+                key={e.id}
+                variant="outline"
+                size="sm"
+                onClick={() => deleteExam(e.id, e.name)}
+                disabled={deletingExamId === e.id}
+              >
+                {deletingExamId === e.id ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                {e.name}
+              </Button>
+            ))}
+            {data.examHeaders.length === 0 && <p className="text-sm text-muted-foreground">暂无考试数据</p>}
+          </div>
         </CardContent>
       </Card>
 
       <Dialog open={Boolean(trendStudent)} onOpenChange={(open) => !open && setTrendStudentId(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{trendStudent?.studentName} 成绩趋势（最近 10 场）</DialogTitle>
+            <DialogTitle>{trendStudent?.studentName} 成绩趋势</DialogTitle>
           </DialogHeader>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendSeries}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="exam" />
-                <YAxis domain={[40, 100]} />
-                <Tooltip />
-                <Line type="monotone" dataKey="score" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="exam" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis domain={[40, 100]} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }} />
+                <Line type="monotone" dataKey="score" stroke={data.classColor} strokeWidth={3} dot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

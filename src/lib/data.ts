@@ -1,6 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { unstable_noStore as noStore } from "next/cache";
-import type { AnalysisPageData, ClassDetail, DashboardStudentRow, ScoreMap } from "@/lib/types";
+import type {
+  AnalysisPageData,
+  ClassComparisonData,
+  ClassDetail,
+  DashboardData,
+  DashboardStudentRow,
+  ScoreMap,
+  StudentDetail,
+  StudentListItem
+} from "@/lib/types";
 import { toFixed } from "@/lib/utils";
 
 function avg(values: number[]) {
@@ -18,7 +27,7 @@ function createRankMap(rows: Array<{ studentId: string; score: number }>) {
   );
 }
 
-export async function getDashboardData() {
+export async function getDashboardData(): Promise<DashboardData> {
   noStore();
   const [classes, exams, students] = await Promise.all([
     prisma.class.findMany({ orderBy: { name: "asc" } }),
@@ -57,7 +66,8 @@ export async function getDashboardData() {
       scores,
       progressDelta,
       rankMetric: progressDelta ?? -9999,
-      rank: 0
+      rank: 0,
+      sparkline: numeric.slice(-6)
     };
   });
 
@@ -67,19 +77,35 @@ export async function getDashboardData() {
       row.rank = index + 1;
     });
 
+  const classTrends = classes.map((cls) => {
+    const classStudents = students.filter((s) => s.classId === cls.id);
+    const points = exams.map((exam) => {
+      const values = classStudents
+        .map((s) => s.scores.find((sc) => sc.examId === exam.id && !sc.isAbsent)?.score)
+        .filter((v): v is number => typeof v === "number");
+      return { examId: exam.id, examName: exam.name, average: values.length > 0 ? avg(values) : null };
+    });
+    return { classId: cls.id, className: cls.name, classColor: cls.color, points };
+  });
+
   return {
-    classes: classes.map((item) => ({
-      id: item.id,
-      name: item.name,
-      color: item.color,
-      studentCount: rows.filter((row) => row.classId === item.id).length
-    })),
+    classes: classes.map((item) => {
+      const latestPoint = classTrends.find((t) => t.classId === item.id)?.points.at(-1);
+      return {
+        id: item.id,
+        name: item.name,
+        color: item.color,
+        studentCount: rows.filter((row) => row.classId === item.id).length,
+        latestAverage: latestPoint?.average ?? null
+      };
+    }),
     exams: exams.map((exam) => ({
       id: exam.id,
       name: exam.name,
       date: exam.date.toISOString().slice(0, 10)
     })),
-    rows: rows.map(({ rankMetric, ...row }) => row)
+    rows: rows.map(({ rankMetric, ...row }) => row),
+    classTrends
   };
 }
 
@@ -194,8 +220,7 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
 
   const distributionBuckets = [
     { key: "90-100", min: 90, max: 100 },
-    { key: "80-89", min: 80, max: 89.99 },
-    { key: "70-79", min: 70, max: 79.99 },
+    { key: "70-89", min: 70, max: 89.99 },
     { key: "60-69", min: 60, max: 69.99 },
     { key: "<60", min: 0, max: 59.99 }
   ];
@@ -349,6 +374,125 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
     rankings,
     improveTop5,
     declineTop5,
-    examProgressTop5
+    examProgressTop5,
+    classComparison: await getClassComparisonData(exams)
   };
+}
+
+export async function getStudentList(): Promise<StudentListItem[]> {
+  noStore();
+  const students = await prisma.student.findMany({
+    include: {
+      class: true,
+      scores: { include: { exam: true } }
+    },
+    orderBy: [{ class: { name: "asc" } }, { name: "asc" }]
+  });
+
+  return students.map((student) => {
+    const validScores = student.scores
+      .filter((s) => !s.isAbsent)
+      .sort((a, b) => a.exam.date.getTime() - b.exam.date.getTime());
+    return {
+      id: student.id,
+      name: student.name,
+      classId: student.classId,
+      className: student.class.name,
+      classColor: student.class.color,
+      examCount: student.scores.length,
+      latestScore: validScores.length > 0 ? validScores[validScores.length - 1].score : null,
+      createdAt: student.createdAt.toISOString().slice(0, 10)
+    };
+  });
+}
+
+export async function getStudentDetail(studentId: string): Promise<StudentDetail | null> {
+  noStore();
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    include: {
+      class: true,
+      scores: { include: { exam: true } }
+    }
+  });
+
+  if (!student) return null;
+
+  const exams = await prisma.exam.findMany({ orderBy: { date: "asc" } });
+
+  const allScores = await prisma.score.findMany({
+    where: { isAbsent: false },
+    include: { student: { include: { class: true } } }
+  });
+
+  const records: StudentDetail["records"] = exams.map((exam) => {
+    const examScores = allScores.filter((s) => s.examId === exam.id);
+    const classScores = examScores.filter((s) => s.classId === student.classId);
+    const sortedScores = [...examScores].sort((a, b) => b.score - a.score);
+    const rankIndex = sortedScores.findIndex((s) => s.studentId === student.id);
+    const studentScore = student.scores.find((s) => s.examId === exam.id);
+    const isAbsent = studentScore?.isAbsent ?? false;
+    const score = studentScore && !isAbsent ? studentScore.score : null;
+
+    return {
+      examId: exam.id,
+      examName: exam.name,
+      examDate: exam.date.toISOString().slice(0, 10),
+      score,
+      isAbsent,
+      rank: rankIndex >= 0 ? rankIndex + 1 : null,
+      totalStudents: classScores.length,
+      classAverage: avg(classScores.map((s) => s.score))
+    };
+  });
+
+  const rankHistory = records.map((r) => ({
+    exam: r.examName,
+    rank: r.rank,
+    score: r.score,
+    classAverage: r.classAverage
+  }));
+
+  return {
+    studentId: student.id,
+    studentName: student.name,
+    classId: student.classId,
+    className: student.class.name,
+    classColor: student.class.color,
+    exams: exams.map((e) => ({ id: e.id, name: e.name, date: e.date.toISOString().slice(0, 10) })),
+    records,
+    rankHistory
+  };
+}
+
+export async function getClassComparisonData(exams: { id: string; name: string; date: string }[]): Promise<ClassComparisonData> {
+  const classes = await prisma.class.findMany({ orderBy: { name: "asc" } });
+
+  const allScores = await prisma.score.findMany({
+    where: { isAbsent: false },
+    include: { student: true }
+  });
+
+  const metrics = classes.map((cls) => {
+    const byExam = exams.map((exam) => {
+      const classScores = allScores.filter((s) => s.classId === cls.id && s.examId === exam.id);
+      const scores = classScores.map((s) => s.score);
+      const passCount = scores.filter((s) => s >= 60).length;
+      const excellentCount = scores.filter((s) => s >= 90).length;
+      return {
+        examId: exam.id,
+        average: avg(scores),
+        passRate: scores.length > 0 ? toFixed((passCount / scores.length) * 100) : 0,
+        excellentRate: scores.length > 0 ? toFixed((excellentCount / scores.length) * 100) : 0
+      };
+    });
+    return {
+      classId: cls.id,
+      className: cls.name,
+      classColor: cls.color,
+      byExam
+    };
+  });
+
+  return { exams, metrics };
 }

@@ -53,12 +53,13 @@ export function ScoreImportForm({ classId, compact = false, onImported, examName
       <div className="space-y-3">
         <div className="grid gap-3">
           <div className="space-y-1.5">
-            <Label>考试名称</Label>
+            <Label className="text-xs">考试名称</Label>
             <Input
               list={examNameListId}
-              placeholder="例如：期中/期末/模拟测试"
+              placeholder="例如：期中/期末"
               value={examName}
               onChange={(e) => setExamName(e.target.value)}
+              className="h-9"
             />
             {examNameOptions.length > 0 && (
               <datalist id={examNameListId}>
@@ -69,16 +70,16 @@ export function ScoreImportForm({ classId, compact = false, onImported, examName
             )}
           </div>
           <div className="space-y-1.5">
-            <Label>考试日期</Label>
-            <Input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} />
+            <Label className="text-xs">考试日期</Label>
+            <Input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} className="h-9" />
           </div>
           <div className="space-y-1.5">
-            <Label>成绩文件（首行为表头）</Label>
-            <Input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            <Label className="text-xs">成绩文件（首行为表头）</Label>
+            <Input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="h-9" />
           </div>
           <Button onClick={onImport} disabled={importing} className="w-full">
-            {importing ? <Loader2 className="animate-spin" /> : <Upload />}
-            导入成绩
+            {importing ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
+            导入
           </Button>
         </div>
         {message && <CardDescription>{message}</CardDescription>}
@@ -88,15 +89,15 @@ export function ScoreImportForm({ classId, compact = false, onImported, examName
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr_1.4fr_auto]">
+      <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.4fr_auto]">
         <div className="space-y-1.5">
-          <Label>考试名称</Label>
+          <Label className="text-xs text-muted-foreground">考试名称</Label>
           <Input
             list={examNameListId}
-            placeholder="例如：期中/期末/模拟测试"
+            placeholder="例如：期中/期末/模拟"
             value={examName}
             onChange={(e) => setExamName(e.target.value)}
-            className="h-11"
+            className="h-9"
           />
           {examNameOptions.length > 0 && (
             <datalist id={examNameListId}>
@@ -107,20 +108,20 @@ export function ScoreImportForm({ classId, compact = false, onImported, examName
           )}
         </div>
         <div className="space-y-1.5">
-          <Label>考试日期</Label>
+          <Label className="text-xs text-muted-foreground">考试日期</Label>
           <div className="relative">
-            <Input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} className="h-11 pr-9" />
-            <Calendar className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} className="h-9 pr-8" />
+            <Calendar className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label>成绩文件（首行为表头）</Label>
-          <Input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="h-11" />
+          <Label className="text-xs text-muted-foreground">成绩文件（首行为表头）</Label>
+          <Input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="h-9" />
         </div>
         <div className="flex items-end">
-          <Button onClick={onImport} disabled={importing} className="h-11 w-full lg:w-[164px]">
-            {importing ? <Loader2 className="animate-spin" /> : <Upload />}
-            导入成绩
+          <Button onClick={onImport} disabled={importing} className="h-9">
+            {importing ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
+            导入
           </Button>
         </div>
       </div>

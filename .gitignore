@@ -8,3 +8,5 @@ coverage
 *.log
 *.sqlite
 *.sqlite-journal
+.DS_Store
+prisma/dev.db
