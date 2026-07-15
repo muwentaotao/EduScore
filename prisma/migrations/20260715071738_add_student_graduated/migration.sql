@@ -1,0 +1,1 @@
+ALTER TABLE "Student" ADD COLUMN "graduated" BOOLEAN NOT NULL DEFAULT false;

@@ -7,20 +7,38 @@ datasource db {
   url      = env("edu_score_PRISMA_DATABASE_URL")
 }
 
+enum Subject {
+  CHINESE
+  MATH
+  ENGLISH
+  SCIENCE
+  SOCIAL
+}
+
+enum ExamType {
+  MONTHLY
+  MIDTERM
+  FINAL
+  WEEKLY
+  MOCK
+}
+
 model Class {
-  id        String    @id @default(cuid())
-  name      String    @unique
-  color     String    @default("#38bdf8")
-  students  Student[]
-  scores    Score[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  name        String    @unique
+  color       String    @default("#38bdf8")
+  isHomeroom  Boolean   @default(false)
+  students    Student[]
+  scores      Score[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Student {
   id         String   @id @default(cuid())
   name       String
   classId    String
+  graduated  Boolean  @default(false)
   class      Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
   scores     Score[]
   createdAt  DateTime @default(now())
@@ -30,12 +48,14 @@ model Student {
 }
 
 model Exam {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  date      DateTime
-  scores    Score[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  name          String   @unique
+  date          DateTime
+  isMultiSubject Boolean @default(false)
+  examType      ExamType?
+  scores        Score[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Score {
@@ -43,14 +63,17 @@ model Score {
   studentId String
   examId    String
   classId   String
+  subject   Subject  @default(SOCIAL)
   score     Float
   isAbsent  Boolean  @default(false)
+  gradeRank Int?
   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
   class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([studentId, examId])
+  @@unique([studentId, examId, subject])
   @@index([examId, classId])
+  @@index([subject])
 }

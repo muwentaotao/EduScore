@@ -39,9 +39,9 @@ export async function POST(request: NextRequest) {
   const finalScore = isAbsent ? 0 : Number(score);
 
   const result = await prisma.score.upsert({
-    where: { studentId_examId: { studentId, examId } },
+    where: { studentId_examId_subject: { studentId, examId, subject: "SOCIAL" } },
     update: { score: finalScore, isAbsent, classId: student.classId },
-    create: { studentId, examId, classId: student.classId, score: finalScore, isAbsent }
+    create: { studentId, examId, classId: student.classId, subject: "SOCIAL", score: finalScore, isAbsent }
   });
 
   return NextResponse.json({ id: result.id, message: "成绩已保存" });

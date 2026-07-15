@@ -204,7 +204,7 @@ export default async function DashboardPage() {
             </TableHeader>
             <TableBody>
               {data.rows.slice(0, 20).map((row) => (
-                <TableRow key={row.studentId}>
+                <TableRow key={row.studentId} className="row-accent">
                   <TableCell>
                     <div className="flex justify-center">
                       <RankBadge rank={row.rank} />

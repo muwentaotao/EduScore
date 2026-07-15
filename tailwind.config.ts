@@ -10,7 +10,9 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Noto Sans SC"', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
+        sans: ['var(--font-sans)', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
+        display: ['var(--font-display)', 'var(--font-sans)', 'serif'],
+        label: ['var(--font-label)', 'var(--font-sans)', 'sans-serif'],
         mono: ['"JetBrains Mono"', '"SF Mono"', '"Monaco"', 'monospace']
       },
       colors: {
@@ -59,10 +61,11 @@ const config: Config = {
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)"
+        sm: "calc(var(--radius) - 4px)",
+        card: "4px"
       },
       boxShadow: {
-        card: "0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02)",
+        card: "0 1px 2px rgba(0, 0, 0, 0.04)",
         "card-hover": "0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.02)",
         elevated: "0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.02)"
       },
@@ -70,10 +73,26 @@ const config: Config = {
         fadeIn: {
           "0%": { opacity: "0", transform: "translateY(4px)" },
           "100%": { opacity: "1", transform: "translateY(0)" }
+        },
+        slideUp: {
+          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" }
+        },
+        scaleIn: {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" }
+        },
+        scorePop: {
+          "0%": { opacity: "0", transform: "scale(0.8)" },
+          "60%": { transform: "scale(1.08)" },
+          "100%": { opacity: "1", transform: "scale(1)" }
         }
       },
       animation: {
-        fadeIn: "fadeIn .2s ease-out"
+        fadeIn: "fadeIn 0.2s ease-out",
+        slideUp: "slideUp 0.4s ease-out",
+        scaleIn: "scaleIn 0.3s ease-out",
+        "score-pop": "scorePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)"
       }
     }
   },

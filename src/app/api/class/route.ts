@@ -16,7 +16,8 @@ export async function GET() {
       id: item.id,
       name: item.name,
       color: item.color,
-      studentCount: item._count.students
+      studentCount: item._count.students,
+      isHomeroom: item.isHomeroom
     })),
     {
       headers: {

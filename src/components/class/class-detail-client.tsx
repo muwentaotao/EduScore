@@ -346,7 +346,7 @@ export function ClassDetailClient({ classId }: Props) {
             </TableHeader>
             <TableBody>
               {studentsForTable.map((row, index) => (
-                <TableRow key={row.student.studentId} className="group">
+                <TableRow key={row.student.studentId} className="group row-accent">
                   <TableCell className="font-mono text-sm font-medium text-muted-foreground">{index + 1}</TableCell>
                   <TableCell className="font-medium">{row.student.studentName}</TableCell>
                   {displayExams.map((e) => (

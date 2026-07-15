@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseFileToRecords } from "@/lib/import";
+import type { ExamType } from "@prisma/client";
+import { EXAM_TYPE_LABELS } from "@/lib/subject";
 
 function normalizeName(name: string) {
   return name.replace(/\s+/g, "").toLowerCase();
@@ -17,10 +19,13 @@ export async function POST(request: NextRequest, context: RouteContext<"/api/cla
   const file = formData.get("file") as File | null;
   const examName = String(formData.get("examName") ?? "").trim();
   const examDate = String(formData.get("examDate") ?? "").trim();
+  const examTypeRaw = String(formData.get("examType") ?? "").trim() as ExamType;
 
   if (!file || !examName || !examDate) {
     return NextResponse.json({ message: "请填写考试名称、导入日期并上传成绩文件" }, { status: 400 });
   }
+
+  const examType = examTypeRaw && examTypeRaw in EXAM_TYPE_LABELS ? examTypeRaw : undefined;
 
   const records = parseFileToRecords(await file.arrayBuffer());
   if (!records.length) {
@@ -29,8 +34,8 @@ export async function POST(request: NextRequest, context: RouteContext<"/api/cla
 
   const exam = await prisma.exam.upsert({
     where: { name: examName },
-    update: { date: new Date(examDate) },
-    create: { name: examName, date: new Date(examDate) }
+    update: { date: new Date(examDate), examType },
+    create: { name: examName, date: new Date(examDate), isMultiSubject: false, examType }
   });
 
   const existingStudents = await prisma.student.findMany({ where: { classId } });
@@ -60,13 +65,14 @@ export async function POST(request: NextRequest, context: RouteContext<"/api/cla
 
     await prisma.score.upsert({
       where: {
-        studentId_examId: {
+        studentId_examId_subject: {
           studentId: student.id,
-          examId: exam.id
+          examId: exam.id,
+          subject: "SOCIAL"
         }
       },
       update: { score: record.score, isAbsent: record.isAbsent, classId },
-      create: { classId, studentId: student.id, examId: exam.id, score: record.score, isAbsent: record.isAbsent }
+      create: { classId, studentId: student.id, examId: exam.id, subject: "SOCIAL", score: record.score, isAbsent: record.isAbsent }
     });
     savedScores += 1;
   }

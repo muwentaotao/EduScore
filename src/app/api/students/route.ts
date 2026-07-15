@@ -4,7 +4,24 @@ import { getStudentList } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const q = request.nextUrl.searchParams.get("q")?.trim();
+  if (q) {
+    const students = await prisma.student.findMany({
+      where: { name: { contains: q }, graduated: false },
+      include: { class: true },
+      take: 20
+    });
+    return NextResponse.json(
+      students.map((s) => ({
+        id: s.id,
+        name: s.name,
+        className: s.class.name,
+        classColor: s.class.color
+      })),
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  }
   const students = await getStudentList();
   return NextResponse.json(students, {
     headers: { "Cache-Control": "no-store" }
