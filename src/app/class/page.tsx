@@ -42,9 +42,10 @@ export default async function ClassIndexPage() {
   const withAvg = data.classes
     .map((c) => ({ ...c, avg: c.latestAverage }))
     .sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0));
+  const classesWithAvg = withAvg.filter((c) => c.avg !== null);
   const overallAvg =
-    withAvg.length > 0
-      ? withAvg.reduce((s, c) => s + (c.avg ?? 0), 0) / withAvg.filter((c) => c.avg !== null).length
+    classesWithAvg.length > 0
+      ? classesWithAvg.reduce((sum, classItem) => sum + (classItem.avg ?? 0), 0) / classesWithAvg.length
       : 0;
 
   return (
@@ -52,7 +53,7 @@ export default async function ClassIndexPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">班级成绩</h1>
-          <p className="mt-1 text-sm text-muted-foreground">各班级数据概览</p>
+          <p className="mt-1 text-sm text-muted-foreground">当前任教班级数据概览</p>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { unstable_noStore as noStore } from "next/cache";
-import type { Subject } from "@prisma/client";
+import type { Prisma, Subject } from "@prisma/client";
 import type {
   AnalysisPageData,
   ClassComparisonData,
@@ -24,6 +24,30 @@ import type {
 import { SUBJECT_ORDER } from "@/lib/subject";
 import { toFixed } from "@/lib/utils";
 
+const CURRENT_CLASS_WHERE = {
+  OR: [
+    { students: { some: { graduated: false } } },
+    { students: { none: {} } }
+  ]
+} satisfies Prisma.ClassWhereInput;
+
+const CURRENT_SOCIAL_EXAM_WHERE = {
+  isMultiSubject: false,
+  scores: {
+    some: {
+      subject: "SOCIAL",
+      student: { graduated: false }
+    }
+  }
+} satisfies Prisma.ExamWhereInput;
+
+const ARCHIVED_CLASS_WHERE = {
+  students: {
+    some: { graduated: true },
+    none: { graduated: false }
+  }
+} satisfies Prisma.ClassWhereInput;
+
 function avg(values: number[]) {
   if (!values.length) {
     return 0;
@@ -42,8 +66,8 @@ function createRankMap(rows: Array<{ studentId: string; score: number }>) {
 export async function getDashboardData(): Promise<DashboardData> {
   noStore();
   const [classes, exams, students] = await Promise.all([
-    prisma.class.findMany({ orderBy: { name: "asc" } }),
-    prisma.exam.findMany({ where: { isMultiSubject: false }, orderBy: { date: "asc" } }),
+    prisma.class.findMany({ where: CURRENT_CLASS_WHERE, orderBy: { name: "asc" } }),
+    prisma.exam.findMany({ where: CURRENT_SOCIAL_EXAM_WHERE, orderBy: { date: "asc" } }),
     prisma.student.findMany({
       where: { graduated: false },
       include: {
@@ -123,13 +147,19 @@ export async function getDashboardData(): Promise<DashboardData> {
   };
 }
 
-export async function getClassDetail(classId: string): Promise<ClassDetail | null> {
-  noStore();
-  const classInfo = await prisma.class.findUnique({
-    where: { id: classId },
+async function getClassDetailByScope(
+  classId: string,
+  scope: "current" | "archived"
+): Promise<ClassDetail | null> {
+  const archived = scope === "archived";
+  const classInfo = await prisma.class.findFirst({
+    where: {
+      id: classId,
+      ...(archived ? ARCHIVED_CLASS_WHERE : CURRENT_CLASS_WHERE)
+    },
     include: {
       students: {
-        where: { graduated: false },
+        where: { graduated: archived },
         include: {
           scores: {
             where: { subject: "SOCIAL" },
@@ -147,7 +177,21 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
     return null;
   }
 
-  const exams = await prisma.exam.findMany({ where: { isMultiSubject: false }, orderBy: { date: "asc" } });
+  const exams = await prisma.exam.findMany({
+    where: archived
+      ? {
+          isMultiSubject: false,
+          scores: {
+            some: {
+              classId,
+              subject: "SOCIAL",
+              student: { graduated: true }
+            }
+          }
+        }
+      : CURRENT_SOCIAL_EXAM_WHERE,
+    orderBy: { date: "asc" }
+  });
   const averageByExam = exams.map((exam) => {
     const values = classInfo.students
       .map((student) => {
@@ -192,11 +236,21 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
   };
 }
 
+export async function getClassDetail(classId: string): Promise<ClassDetail | null> {
+  noStore();
+  return getClassDetailByScope(classId, "current");
+}
+
+export async function getArchivedClassDetail(classId: string): Promise<ClassDetail | null> {
+  noStore();
+  return getClassDetailByScope(classId, "archived");
+}
+
 export async function getAnalysisData(examId?: string): Promise<AnalysisPageData> {
   noStore();
   const [exams, classes] = await Promise.all([
-    prisma.exam.findMany({ where: { isMultiSubject: false }, orderBy: { date: "asc" } }),
-    prisma.class.findMany({ orderBy: { name: "asc" } })
+    prisma.exam.findMany({ where: CURRENT_SOCIAL_EXAM_WHERE, orderBy: { date: "asc" } }),
+    prisma.class.findMany({ where: CURRENT_CLASS_WHERE, orderBy: { name: "asc" } })
   ]);
 
   const selected = exams.find((item) => item.id === examId) ?? exams[exams.length - 1];
@@ -215,7 +269,12 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
   }
 
   const scores = await prisma.score.findMany({
-    where: { examId: selected.id, isAbsent: false, subject: "SOCIAL" },
+    where: {
+      examId: selected.id,
+      isAbsent: false,
+      subject: "SOCIAL",
+      student: { graduated: false }
+    },
     include: {
       student: {
         include: {
@@ -267,7 +326,12 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
 
   if (prevExam) {
     const prevScores = await prisma.score.findMany({
-      where: { examId: prevExam.id, isAbsent: false, subject: "SOCIAL" },
+      where: {
+        examId: prevExam.id,
+        isAbsent: false,
+        subject: "SOCIAL",
+        student: { graduated: false }
+      },
       include: {
         student: {
           include: {
@@ -315,7 +379,12 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
 
   if (exams.length > 1) {
     const scoreRows = await prisma.score.findMany({
-      where: { isAbsent: false, subject: "SOCIAL" },
+      where: {
+        examId: { in: exams.map((exam) => exam.id) },
+        isAbsent: false,
+        subject: "SOCIAL",
+        student: { graduated: false }
+      },
       include: {
         student: {
           include: {
@@ -488,10 +557,18 @@ export async function getStudentDetail(studentId: string): Promise<StudentDetail
 }
 
 export async function getClassComparisonData(exams: { id: string; name: string; date: string }[]): Promise<ClassComparisonData> {
-  const classes = await prisma.class.findMany({ orderBy: { name: "asc" } });
+  const classes = await prisma.class.findMany({
+    where: CURRENT_CLASS_WHERE,
+    orderBy: { name: "asc" }
+  });
 
   const allScores = await prisma.score.findMany({
-    where: { isAbsent: false, subject: "SOCIAL" },
+    where: {
+      examId: { in: exams.map((exam) => exam.id) },
+      isAbsent: false,
+      subject: "SOCIAL",
+      student: { graduated: false }
+    },
     include: { student: true }
   });
 

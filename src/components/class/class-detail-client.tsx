@@ -1,19 +1,21 @@
 ﻿"use client";
-/* eslint-disable react-hooks/set-state-in-effect */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
+  Archive,
   ArrowDownRight,
+  ArrowLeft,
   ArrowUpRight,
   Download,
   Loader2,
   Minus,
-  Pencil,
   Search,
   Trash2,
   TrendingUp
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,7 +24,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ClassDetail } from "@/lib/types";
 
-type Props = { classId: string };
+type Props = {
+  classId: string;
+  mode?: "current" | "archived";
+};
 
 type ExamStat = {
   avg: number;
@@ -85,25 +90,40 @@ function getExamStat(data: ClassDetail | null, examId: string | null): ExamStat 
   };
 }
 
-export function ClassDetailClient({ classId }: Props) {
+export function ClassDetailClient({ classId, mode = "current" }: Props) {
+  const archived = mode === "archived";
   const [data, setData] = useState<ClassDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [trendStudentId, setTrendStudentId] = useState<string | null>(null);
   const [deletingExamId, setDeletingExamId] = useState<string | null>(null);
   const [keyword, setKeyword] = useState("");
   const [selectedExamId, setSelectedExamId] = useState("");
 
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    const response = await fetch(`/api/class/${classId}`, { cache: "no-store" });
-    const result = (await response.json()) as ClassDetail;
-    setData(result);
-    setLoading(false);
-  }
+    setError("");
+    try {
+      const scope = archived ? "?scope=archived" : "";
+      const response = await fetch(`/api/class/${classId}${scope}`, { cache: "no-store" });
+      const result = (await response.json()) as ClassDetail | { message?: string };
+      if (!response.ok) {
+        setData(null);
+        setError("message" in result && result.message ? result.message : "加载班级成绩失败");
+        return;
+      }
+      setData(result as ClassDetail);
+    } catch {
+      setData(null);
+      setError("加载班级成绩失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [archived, classId]);
 
   useEffect(() => {
     fetchData();
-  }, [classId]);
+  }, [fetchData]);
 
   useEffect(() => {
     if (data && !selectedExamId) {
@@ -172,6 +192,7 @@ export function ClassDetailClient({ classId }: Props) {
   }, [trendStudent, data]);
 
   async function deleteExam(examId: string, examName: string) {
+    if (archived) return;
     if (!window.confirm(`确认删除考试「${examName}」及其所有成绩？`)) return;
     setDeletingExamId(examId);
     await fetch(`/api/exam/${examId}`, { method: "DELETE" });
@@ -179,7 +200,7 @@ export function ClassDetailClient({ classId }: Props) {
     await fetchData();
   }
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div className="flex h-60 items-center justify-center text-muted-foreground">
         <Loader2 className="mr-2 animate-spin" size={16} />
@@ -188,16 +209,62 @@ export function ClassDetailClient({ classId }: Props) {
     );
   }
 
+  if (error || !data) {
+    return (
+      <Card className="mx-auto max-w-xl">
+        <CardContent className="flex min-h-56 flex-col items-center justify-center gap-4 text-center">
+          <Archive className="size-8 text-muted-foreground" />
+          <div>
+            <p className="font-semibold">{archived ? "无法查看归档成绩" : "无法查看班级成绩"}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{error || "班级数据不存在"}</p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href={archived ? "/class/manage" : "/class"}>返回班级管理</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const exportHref = selectedExam
+    ? archived
+      ? `/api/export?scope=archived&classId=${classId}&examId=${selectedExam.id}`
+      : `/api/export?examId=${selectedExam.id}`
+    : null;
+
   return (
     <div className="space-y-6 animate-fadeIn">
+      {archived && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button asChild variant="ghost" size="sm" className="-ml-2">
+            <Link href="/class/manage">
+              <ArrowLeft size={14} />
+              返回毕业归档
+            </Link>
+          </Button>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+            <Archive className="size-4" />
+            归档数据仅供查看，不可编辑、导入或删除
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full" style={{ backgroundColor: data.classColor }} />
             <h1 className="text-2xl font-bold tracking-tight">{data.className}</h1>
+            {archived && (
+              <Badge variant="outline">
+                <Archive data-icon="inline-start" />
+                毕业归档 · 只读
+              </Badge>
+            )}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{data.students.length} 名学生 · {data.examHeaders.length} 场考试</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {data.students.length} 名{archived ? "毕业生" : "学生"} · {data.examHeaders.length} 场{archived ? "历史" : ""}考试
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedExamId} onValueChange={setSelectedExamId}>
@@ -210,12 +277,19 @@ export function ClassDetailClient({ classId }: Props) {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" asChild>
-            <a href={`/api/export?examId=${selectedExam?.id ?? ""}`}>
+          {exportHref ? (
+            <Button variant="outline" size="sm" asChild>
+              <a href={exportHref}>
+                <Download size={16} />
+                导出
+              </a>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled>
               <Download size={16} />
               导出
-            </a>
-          </Button>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -375,7 +449,7 @@ export function ClassDetailClient({ classId }: Props) {
               ))}
               {studentsForTable.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={displayExams.length + 4} className="py-8 text-center text-muted-foreground">
                     没有匹配的学生
                   </TableCell>
                 </TableRow>
@@ -385,30 +459,31 @@ export function ClassDetailClient({ classId }: Props) {
         </CardContent>
       </Card>
 
-      {/* Exam management */}
-      <Card>
-        <CardHeader>
-          <CardTitle>考试管理</CardTitle>
-          <CardDescription>删除某次考试及其成绩</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {data.examHeaders.map((e) => (
-              <Button
-                key={e.id}
-                variant="outline"
-                size="sm"
-                onClick={() => deleteExam(e.id, e.name)}
-                disabled={deletingExamId === e.id}
-              >
-                {deletingExamId === e.id ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
-                {e.name}
-              </Button>
-            ))}
-            {data.examHeaders.length === 0 && <p className="text-sm text-muted-foreground">暂无考试数据</p>}
-          </div>
-        </CardContent>
-      </Card>
+      {!archived && (
+        <Card>
+          <CardHeader>
+            <CardTitle>考试管理</CardTitle>
+            <CardDescription>删除某次考试及其成绩</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {data.examHeaders.map((e) => (
+                <Button
+                  key={e.id}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => deleteExam(e.id, e.name)}
+                  disabled={deletingExamId === e.id}
+                >
+                  {deletingExamId === e.id ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                  {e.name}
+                </Button>
+              ))}
+              {data.examHeaders.length === 0 && <p className="text-sm text-muted-foreground">暂无考试数据</p>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={Boolean(trendStudent)} onOpenChange={(open) => !open && setTrendStudentId(null)}>
         <DialogContent className="max-w-3xl">

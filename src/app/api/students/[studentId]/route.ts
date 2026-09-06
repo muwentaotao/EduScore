@@ -21,6 +21,9 @@ export async function PUT(request: NextRequest, context: RouteContext<"/api/stud
   if (!found) {
     return NextResponse.json({ message: "学生不存在" }, { status: 404 });
   }
+  if (found.graduated) {
+    return NextResponse.json({ message: "毕业归档学生为只读，不能修改" }, { status: 409 });
+  }
 
   const data: { name?: string; classId?: string } = {};
   if (payload.name !== undefined) {
@@ -47,6 +50,9 @@ export async function DELETE(_: NextRequest, context: RouteContext<"/api/student
   const found = await prisma.student.findUnique({ where: { id: studentId } });
   if (!found) {
     return NextResponse.json({ message: "学生不存在" }, { status: 404 });
+  }
+  if (found.graduated) {
+    return NextResponse.json({ message: "毕业归档学生为只读，不能删除" }, { status: 409 });
   }
 
   await prisma.student.delete({ where: { id: studentId } });

@@ -72,7 +72,7 @@ export default async function DashboardPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">教学概览</h1>
-          <p className="mt-1 text-sm text-muted-foreground">全年级成绩数据一览</p>
+          <p className="mt-1 text-sm text-muted-foreground">当前任教班级成绩数据一览</p>
         </div>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
@@ -89,7 +89,7 @@ export default async function DashboardPage() {
         <Card>
           <CardContent className="flex items-center justify-between pt-5">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">班级总数</p>
+              <p className="text-sm font-medium text-muted-foreground">当前班级</p>
               <p className="mt-1 text-3xl font-bold tracking-tight">{data.classes.length}</p>
             </div>
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -142,11 +142,17 @@ export default async function DashboardPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>班级均分趋势</CardTitle>
-            <CardDescription>各班最近 {data.exams.length} 场考试平均分走势</CardDescription>
+            <CardDescription>当前各班最近 {data.exams.length} 场考试平均分走势</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
-          <DashboardTrendChart data={trendChartData} series={data.classTrends.map((t) => ({ key: t.className, color: t.classColor }))} />
+          {data.exams.length > 0 ? (
+            <DashboardTrendChart data={trendChartData} series={data.classTrends.map((t) => ({ key: t.className, color: t.classColor }))} />
+          ) : (
+            <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+              暂无当前成绩，创建班级并导入成绩后将在这里显示
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -181,12 +187,19 @@ export default async function DashboardPage() {
             </Card>
           </Link>
         ))}
+        {data.classes.length === 0 ? (
+          <Card className="md:col-span-2 xl:col-span-3">
+            <CardContent className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+              暂无当前班级，请先前往班级管理创建
+            </CardContent>
+          </Card>
+        ) : null}
       </section>
 
       {/* Progress ranking */}
       <Card>
         <CardHeader>
-          <CardTitle>学生进步榜</CardTitle>
+          <CardTitle>当前学生进步榜</CardTitle>
           <CardDescription>按最近两场考试分数差排序</CardDescription>
         </CardHeader>
         <CardContent>
@@ -234,7 +247,7 @@ export default async function DashboardPage() {
               ))}
               {data.rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={displayExams.length + 4} className="py-8 text-center text-muted-foreground">
                     暂无数据
                   </TableCell>
                 </TableRow>

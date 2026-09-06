@@ -24,6 +24,9 @@ export async function POST(request: NextRequest) {
   if (!student) {
     return NextResponse.json({ message: "学生不存在" }, { status: 400 });
   }
+  if (student.graduated) {
+    return NextResponse.json({ message: "毕业归档成绩为只读，不能修改" }, { status: 409 });
+  }
 
   const exam = await prisma.exam.findUnique({ where: { id: examId } });
   if (!exam) {

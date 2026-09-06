@@ -10,9 +10,21 @@ function normalizeName(name: string) {
 
 export async function POST(request: NextRequest, context: RouteContext<"/api/class/[classId]/import">) {
   const { classId } = await context.params;
-  const classInfo = await prisma.class.findUnique({ where: { id: classId } });
+  const classInfo = await prisma.class.findUnique({
+    where: { id: classId },
+    include: {
+      _count: { select: { students: true } },
+      students: { where: { graduated: false } }
+    }
+  });
   if (!classInfo) {
     return NextResponse.json({ message: "班级不存在" }, { status: 404 });
+  }
+  if (classInfo._count.students > 0 && classInfo.students.length === 0) {
+    return NextResponse.json(
+      { message: "该班级已经毕业归档，请在当前班级中导入成绩" },
+      { status: 409 }
+    );
   }
 
   const formData = await request.formData();
@@ -32,13 +44,40 @@ export async function POST(request: NextRequest, context: RouteContext<"/api/cla
     return NextResponse.json({ message: "未识别到有效数据，请确认首行表头包含姓名与社会/成绩列" }, { status: 400 });
   }
 
-  const exam = await prisma.exam.upsert({
+  const existingExam = await prisma.exam.findUnique({
     where: { name: examName },
-    update: { date: new Date(examDate), examType },
-    create: { name: examName, date: new Date(examDate), isMultiSubject: false, examType }
+    include: {
+      scores: {
+        select: {
+          student: { select: { graduated: true } }
+        }
+      }
+    }
   });
 
-  const existingStudents = await prisma.student.findMany({ where: { classId } });
+  if (existingExam?.isMultiSubject) {
+    return NextResponse.json(
+      { message: "该考试名称已用于五科成绩，请换一个社会考试名称" },
+      { status: 409 }
+    );
+  }
+  if (existingExam?.scores.some((score) => score.student.graduated)) {
+    return NextResponse.json(
+      { message: "该考试名称属于毕业归档，请使用新的考试名称" },
+      { status: 409 }
+    );
+  }
+
+  const exam = existingExam
+    ? await prisma.exam.update({
+        where: { id: existingExam.id },
+        data: { date: new Date(examDate), examType }
+      })
+    : await prisma.exam.create({
+        data: { name: examName, date: new Date(examDate), isMultiSubject: false, examType }
+      });
+
+  const existingStudents = classInfo.students;
   const studentMap = new Map(existingStudents.map((s) => [normalizeName(s.name), s]));
 
   const uniqueByName = new Map<string, { name: string; score: number; isAbsent: boolean }>();

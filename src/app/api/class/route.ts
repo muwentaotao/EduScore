@@ -3,22 +3,35 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const includeArchived = new URL(request.url).searchParams.get("includeArchived") === "true";
   const classes = await prisma.class.findMany({
     include: {
-      _count: { select: { students: true } }
+      _count: { select: { students: true } },
+      students: {
+        where: { graduated: false },
+        select: { id: true }
+      }
     },
     orderBy: { name: "asc" }
   });
 
-  return NextResponse.json(
-    classes.map((item) => ({
+  const items = classes.map((item) => {
+    const activeStudentCount = item.students.length;
+    const graduatedStudentCount = item._count.students - activeStudentCount;
+    return {
       id: item.id,
       name: item.name,
       color: item.color,
-      studentCount: item._count.students,
+      studentCount: activeStudentCount,
+      graduatedStudentCount,
+      archived: activeStudentCount === 0 && graduatedStudentCount > 0,
       isHomeroom: item.isHomeroom
-    })),
+    };
+  });
+
+  return NextResponse.json(
+    includeArchived ? items : items.filter((item) => !item.archived),
     {
       headers: {
         "Cache-Control": "no-store"

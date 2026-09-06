@@ -83,6 +83,23 @@ export function AnalysisClient() {
     );
   }
 
+  if (data.exams.length === 0) {
+    return (
+      <div className="space-y-6 animate-fadeIn">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">年级分析</h1>
+          <p className="mt-1 text-sm text-muted-foreground">只统计当前未毕业学生的成绩</p>
+        </div>
+        <Card>
+          <CardContent className="flex min-h-56 flex-col items-center justify-center gap-2 text-center">
+            <p className="font-medium text-foreground">暂无当前成绩</p>
+            <p className="text-sm text-muted-foreground">毕业班成绩已归档；创建当前班级并导入成绩后，这里会自动显示新数据。</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
@@ -120,7 +137,7 @@ export function AnalysisClient() {
         <Card>
           <CardHeader>
             <CardTitle>班级平均分</CardTitle>
-            <CardDescription>各班本次考试平均分对比</CardDescription>
+            <CardDescription>当前各班本次考试平均分对比</CardDescription>
           </CardHeader>
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -142,7 +159,7 @@ export function AnalysisClient() {
         <Card>
           <CardHeader>
             <CardTitle>分数段分布</CardTitle>
-            <CardDescription>全年级学生成绩分段统计</CardDescription>
+            <CardDescription>当前学生成绩分段统计</CardDescription>
           </CardHeader>
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -166,8 +183,8 @@ export function AnalysisClient() {
       {/* Rankings */}
       <Card>
         <CardHeader>
-          <CardTitle>全年级总排名</CardTitle>
-          <CardDescription>本次考试全年级学生排名</CardDescription>
+          <CardTitle>当前学生总排名</CardTitle>
+          <CardDescription>本次考试当前任教班级学生排名</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
