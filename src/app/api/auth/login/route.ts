@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AUTH_COOKIE, AUTH_PASSWORD, AUTH_USERNAME } from "@/lib/auth";
-import { createSessionToken } from "@/lib/session";
+import { AUTH_PASSWORD, AUTH_USERNAME } from "@/lib/auth";
+import { createSessionToken, sessionCookieHeaders } from "@/lib/session";
 
 export async function POST(request: NextRequest) {
   const payload = (await request.json()) as { username?: string; password?: string };
@@ -13,12 +13,7 @@ export async function POST(request: NextRequest) {
 
   const token = await createSessionToken({ sub: AUTH_USERNAME });
   const response = NextResponse.json({ message: "登录成功" });
-  response.cookies.set(AUTH_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 12
-  });
+  const cookie = sessionCookieHeaders(token);
+  response.cookies.set(cookie.name, cookie.value, cookie.options);
   return response;
 }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SESSION_LAST_ACTIVITY_KEY } from "@/lib/session-config";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function LoginPage() {
       return;
     }
 
+    localStorage.setItem(SESSION_LAST_ACTIVITY_KEY, String(Date.now()));
     router.replace("/");
     router.refresh();
   }
