@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseFileToRecords } from "@/lib/import";
 import type { ExamType } from "@prisma/client";
-import { EXAM_TYPE_LABELS } from "@/lib/subject";
+import { EXAM_TYPE_LABELS } from "@/lib/exam-type";
 
 function normalizeName(name: string) {
   return name.replace(/\s+/g, "").toLowerCase();

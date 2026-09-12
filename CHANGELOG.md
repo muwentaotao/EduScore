@@ -4,6 +4,50 @@
 
 ---
 
+## [2026-09-12] 清理五科遗留
+
+### 删除文件
+- `scripts/inspect.ts`、`scripts/check-students.ts`、`scripts/remove-bad-students.ts`（五科数据排查用的一次性脚本，引用了 `isHomeroom`，`package.json` 与源码均无引用）
+- `scripts/` 目录随之删除
+
+### 重命名
+- `src/lib/subject.ts` → `src/lib/exam-type.ts`：该文件现在只剩 `EXAM_TYPE_ORDER` 与 `EXAM_TYPE_LABELS`，原名已名不副实
+- 同步修改 2 处 import：`src/app/api/class/[classId]/import/route.ts`、`src/components/class/score-import-form.tsx`
+- **导出名保持不变**，未改动常量名
+
+### 验证
+- `tsc --noEmit`：0 error
+- `next build`：Compiled successfully，路由表无 `/wuke` 与 `/api/wuke/*`
+- 数据库结构未改动，未执行 migration
+
+---
+
+## [2026-09-12] 移除五科成绩入口，仅保留社会单科
+
+### 入口调整
+- 侧边栏移除「五科成绩」入口；导航由「社会成绩」折叠组改为 6 项平铺（仪表盘/年级分析/班级成绩/成绩导入/班级管理/学生管理）+ 设置
+- 班级管理页移除「设为班主任」按钮与「班主任」徽标
+
+### 删除文件
+- `src/app/wuke/page.tsx`
+- `src/components/wuke/wuke-client.tsx`
+- `src/app/api/wuke/route.ts`、`import/route.ts`、`student/route.ts`、`template/route.ts`、`homeroom/route.ts`
+
+### 清理代码
+- `src/lib/data.ts` — 7 个 `getWuke*` 函数、`getHomeroomClass`、预警阈值常量、`buildSubjectRankMap`、`computeWarnings`
+- `src/lib/types.ts` — 全部 `Wuke*` 类型
+- `src/lib/import.ts` — `parseWukeFileToRecords`、`WukeScoreRecord` 及五科表头识别辅助函数（`detectSubjectColumns` 等）
+- `src/lib/subject.ts` — `SUBJECT_ORDER/LABELS/COLORS/KEYWORDS`、`EXAM_TYPE_COLORS`、`examTypeLabel`、`subjectLabel`
+- `src/components/settings/settings-client.tsx` — 「五科 Excel 模板」下载卡片及 `downloadTemplate`
+- `src/app/api/class/route.ts` — 响应中的 `isHomeroom` 字段
+
+### 未改动（数据保留）
+- 数据库结构与数据不变，未执行 migration：`Class.isHomeroom`、`Exam.isMultiSubject`、`Score.subject` 原样保留
+- 备份/恢复链路仍完整读写这两个字段，历史五科考试与成绩数据未删除
+- 社会单科查询继续以 `isMultiSubject: false` 过滤考试
+
+---
+
 ## [2026-07-15] 偏科分析对话框可视化增强
 
 ### 历次偏科趋势 tab

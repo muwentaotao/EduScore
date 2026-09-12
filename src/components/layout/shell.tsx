@@ -7,10 +7,8 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   BookOpenText,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  GraduationCap,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -24,10 +22,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { GlobalSearch } from "@/components/layout/global-search";
+import { SessionActivityGuard } from "@/components/auth/session-activity-guard";
 import { cn } from "@/lib/utils";
+import { SESSION_LAST_ACTIVITY_KEY } from "@/lib/session-config";
 import { useState, useEffect } from "react";
 
-const socialNavItems: { href: Route; label: string; icon: ComponentType<{ size?: number }> }[] = [
+const navItems: { href: Route; label: string; icon: ComponentType<{ size?: number }> }[] = [
   { href: "/", label: "仪表盘", icon: LayoutDashboard },
   { href: "/analysis", label: "年级分析", icon: BarChart3 },
   { href: "/class", label: "班级成绩", icon: School },
@@ -47,91 +47,42 @@ function BrandBlock({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function SocialNavList({ pathname, collapsed, expanded, onToggle }: {
-  pathname: string;
-  collapsed: boolean;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const isSocialActive =
-    pathname === "/" ||
-    pathname.startsWith("/analysis") ||
-    pathname.startsWith("/class") ||
-    pathname.startsWith("/import") ||
-    pathname.startsWith("/students");
+function NavList({ pathname, collapsed }: { pathname: string; collapsed: boolean }) {
   return (
-    <div className="space-y-1">
-      <button
-        onClick={onToggle}
-        className={cn(
-          "group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
-          isSocialActive
-            ? "bg-primary/10 text-primary"
-            : "text-foreground hover:bg-muted",
-          collapsed && "justify-center"
-        )}
-        title={collapsed ? "社会成绩" : undefined}
-      >
-        <BookOpenText size={18} />
-        {!collapsed && <span className="flex-1 text-left">社会成绩</span>}
-        {!collapsed && (
-          <ChevronDown
-            size={16}
-            className={cn("text-muted-foreground transition-transform", expanded && "rotate-180")}
-          />
-        )}
-      </button>
-      {expanded && !collapsed && (
-        <nav className="flex flex-col gap-0.5 pl-1">
-          {socialNavItems.map((item) => {
-            const active =
-              item.href === "/class"
-                ? pathname === "/class" || (pathname.startsWith("/class/") && !pathname.startsWith("/class/manage"))
-                : item.href === "/students"
-                  ? pathname === "/students" || pathname.startsWith("/students/")
-                  : pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                href={item.href}
-                key={item.href}
-                className={cn(
-                  "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icon size={16} />
-                <span>{item.label}</span>
-                {active && <span className="absolute inset-y-1 left-0 w-1 rounded-r-full bg-primary" />}
-              </Link>
-            );
-          })}
-        </nav>
-      )}
+    <div className="space-y-4">
+      <nav className="flex flex-col gap-0.5">
+        {navItems.map((item) => {
+          const active =
+            item.href === "/class"
+              ? pathname === "/class" || (pathname.startsWith("/class/") && !pathname.startsWith("/class/manage"))
+              : item.href === "/students"
+                ? pathname === "/students" || pathname.startsWith("/students/")
+                : pathname === item.href;
+          const Icon = item.icon;
+          return (
+            <Link
+              href={item.href}
+              key={item.href}
+              className={cn(
+                "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                active
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                collapsed && "justify-center"
+              )}
+              title={collapsed ? item.label : undefined}
+            >
+              <Icon size={18} />
+              {!collapsed && <span>{item.label}</span>}
+              {active && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-primary" />}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="border-t pt-2">
+        <SettingsNavButton pathname={pathname} collapsed={collapsed} />
+      </div>
     </div>
-  );
-}
-
-function WukeNavButton({ pathname, collapsed }: { pathname: string; collapsed: boolean }) {
-  const active = pathname === "/wuke" || pathname.startsWith("/wuke/");
-  return (
-    <Link
-      href="/wuke"
-      className={cn(
-        "group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
-        active
-          ? "bg-primary/10 text-primary"
-          : "text-foreground hover:bg-muted",
-        collapsed && "justify-center"
-      )}
-      title={collapsed ? "五科成绩" : undefined}
-    >
-      <GraduationCap size={18} />
-      {!collapsed && <span>五科成绩</span>}
-      {active && collapsed && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-primary" />}
-    </Link>
   );
 }
 
@@ -141,7 +92,7 @@ function SettingsNavButton({ pathname, collapsed }: { pathname: string; collapse
     <Link
       href="/settings"
       className={cn(
-        "group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+        "group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
         active
           ? "bg-primary/10 text-primary"
           : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -151,39 +102,21 @@ function SettingsNavButton({ pathname, collapsed }: { pathname: string; collapse
     >
       <Settings size={18} />
       {!collapsed && <span>设置</span>}
-      {active && collapsed && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-primary" />}
+      {active && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-primary" />}
     </Link>
-  );
-}
-
-function NavList({ pathname, collapsed, socialExpanded, onToggleSocial }: {
-  pathname: string;
-  collapsed: boolean;
-  socialExpanded: boolean;
-  onToggleSocial: () => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <SocialNavList
-        pathname={pathname}
-        collapsed={collapsed}
-        expanded={socialExpanded}
-        onToggle={onToggleSocial}
-      />
-      <div className="border-t pt-2 space-y-1">
-        <WukeNavButton pathname={pathname} collapsed={collapsed} />
-        <SettingsNavButton pathname={pathname} collapsed={collapsed} />
-      </div>
-    </div>
   );
 }
 
 function LogoutNavItem({ collapsed }: { collapsed: boolean }) {
   const router = useRouter();
   async function onLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/login");
-    router.refresh();
+    localStorage.removeItem(SESSION_LAST_ACTIVITY_KEY);
+    try {
+      await fetch("/api/auth/logout", { method: "POST", cache: "no-store" });
+    } finally {
+      router.replace("/login");
+      router.refresh();
+    }
   }
   return (
     <Button
@@ -219,7 +152,6 @@ function UserBlock({ collapsed }: { collapsed: boolean }) {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [socialExpanded, setSocialExpanded] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -227,8 +159,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     setMounted(true); // eslint-disable-line react-hooks/set-state-in-effect
     const savedCollapsed = localStorage.getItem("eduscore_sidebar_collapsed");
     if (savedCollapsed) setCollapsed(savedCollapsed === "true");
-    const savedExpanded = localStorage.getItem("eduscore_sidebar_social_expanded");
-    if (savedExpanded) setSocialExpanded(savedExpanded === "true");
   }, []);
 
   useEffect(() => {
@@ -248,112 +178,99 @@ export function AppShell({ children }: { children: ReactNode }) {
     localStorage.setItem("eduscore_sidebar_collapsed", String(next));
   }
 
-  function toggleSocial() {
-    const next = !socialExpanded;
-    setSocialExpanded(next);
-    localStorage.setItem("eduscore_sidebar_social_expanded", String(next));
-  }
-
   if (pathname === "/login") {
     return <main className="min-h-screen p-4 md:p-6">{children}</main>;
   }
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
-      {/* Desktop sidebar */}
-      <aside
-        className={cn(
-          "hidden flex-col border-r bg-card transition-all duration-200 md:flex",
-          collapsed ? "w-[72px] px-2 py-4" : "w-[220px] px-3 py-4"
-        )}
-      >
-        <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
-          <BrandBlock compact={collapsed} />
-          {!collapsed && (
+    <>
+      <SessionActivityGuard />
+      <div className="flex min-h-screen flex-col md:flex-row">
+        {/* Desktop sidebar */}
+        <aside
+          className={cn(
+            "hidden flex-col border-r bg-card transition-all duration-200 md:flex",
+            collapsed ? "w-[72px] px-2 py-4" : "w-[220px] px-3 py-4"
+          )}
+        >
+          <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
+            <BrandBlock compact={collapsed} />
+            {!collapsed && (
+              <button
+                onClick={toggleSidebar}
+                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <ChevronLeft size={16} />
+              </button>
+            )}
+          </div>
+          {collapsed && (
             <button
               onClick={toggleSidebar}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="mx-auto mt-4 flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              <ChevronLeft size={16} />
+              <ChevronRight size={18} />
             </button>
           )}
-        </div>
-        {collapsed && (
-          <button
-            onClick={toggleSidebar}
-            className="mx-auto mt-4 flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <ChevronRight size={18} />
-          </button>
-        )}
-        <div className="mt-4">
-          <button
-            onClick={() => setSearchOpen(true)}
-            className={cn(
-              "flex w-full items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted",
-              collapsed && "justify-center"
-            )}
-            title="搜索学生 (Ctrl+K)"
-          >
-            <Search size={16} />
-            {!collapsed && <span>搜索学生</span>}
-            {!collapsed && <span className="ml-auto text-xs">⌘K</span>}
-          </button>
-        </div>
-        <div className="mt-4 flex-1">
-          <NavList
-            pathname={pathname}
-            collapsed={collapsed}
-            socialExpanded={socialExpanded}
-            onToggleSocial={toggleSocial}
-          />
-        </div>
-        <div className="mt-auto space-y-2 border-t pt-3">
-          <UserBlock collapsed={collapsed} />
-          <LogoutNavItem collapsed={collapsed} />
-        </div>
-      </aside>
+          <div className="mt-4">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted",
+                collapsed && "justify-center"
+              )}
+              title="搜索学生 (Ctrl+K)"
+            >
+              <Search size={16} />
+              {!collapsed && <span>搜索学生</span>}
+              {!collapsed && <span className="ml-auto text-xs">⌘K</span>}
+            </button>
+          </div>
+          <div className="mt-4 flex-1">
+            <NavList pathname={pathname} collapsed={collapsed} />
+          </div>
+          <div className="mt-auto space-y-2 border-t pt-3">
+            <UserBlock collapsed={collapsed} />
+            <LogoutNavItem collapsed={collapsed} />
+          </div>
+        </aside>
 
-      {/* Mobile header */}
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-card px-4 md:hidden">
-        <BrandBlock compact />
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)}>
-            <Search size={18} />
-          </Button>
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu size={18} />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[220px] bg-card p-3">
-              <SheetTitle className="sr-only">主导航菜单</SheetTitle>
-              <div className="flex h-full flex-col">
-                <BrandBlock />
-                <div className="mt-6 flex-1 overflow-y-auto">
-                  <NavList
-                    pathname={pathname}
-                    collapsed={false}
-                    socialExpanded={socialExpanded}
-                    onToggleSocial={toggleSocial}
-                  />
+        {/* Mobile header */}
+        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-card px-4 md:hidden">
+          <BrandBlock compact />
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)}>
+              <Search size={18} />
+            </Button>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu size={18} />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[220px] bg-card p-3">
+                <SheetTitle className="sr-only">主导航菜单</SheetTitle>
+                <div className="flex h-full flex-col">
+                  <BrandBlock />
+                  <div className="mt-6 flex-1 overflow-y-auto">
+                    <NavList pathname={pathname} collapsed={false} />
+                  </div>
+                  <div className="mt-auto space-y-2 border-t pt-3">
+                    <UserBlock collapsed={false} />
+                    <LogoutNavItem collapsed={false} />
+                  </div>
                 </div>
-                <div className="mt-auto space-y-2 border-t pt-3">
-                  <UserBlock collapsed={false} />
-                  <LogoutNavItem collapsed={false} />
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </header>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </header>
 
-      <main className="flex-1 overflow-auto bg-background p-4 md:p-6">
-        <div className="mx-auto max-w-7xl">{children}</div>
-      </main>
+        <main className="flex-1 overflow-auto bg-background p-4 md:p-6">
+          <div className="mx-auto max-w-7xl">{children}</div>
+        </main>
 
-      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-    </div>
+        <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+      </div>
+    </>
   );
 }

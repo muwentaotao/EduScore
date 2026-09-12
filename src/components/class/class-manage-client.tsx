@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import type { Route } from "next";
 import Link from "next/link";
-import { Archive, GraduationCap, History, Loader2, Plus, Trash2 } from "lucide-react";
+import { Archive, History, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,6 @@ type ClassItem = {
   studentCount: number;
   graduatedStudentCount: number;
   archived: boolean;
-  isHomeroom?: boolean;
 };
 
 export function ClassManageClient() {
@@ -27,7 +26,6 @@ export function ClassManageClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
-  const [settingHomeroomId, setSettingHomeroomId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
   async function fetchClasses() {
@@ -74,19 +72,6 @@ export function ClassManageClient() {
     await fetchClasses();
   }
 
-  async function setHomeroom(classItem: ClassItem) {
-    setSettingHomeroomId(classItem.id);
-    const response = await fetch("/api/wuke/homeroom", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ classId: classItem.id })
-    });
-    const result = await response.json();
-    setSettingHomeroomId(null);
-    setMessage(result.message || "");
-    await fetchClasses();
-  }
-
   const currentClasses = classes.filter((classItem) => !classItem.archived);
   const archivedClasses = classes.filter((classItem) => classItem.archived);
 
@@ -111,15 +96,7 @@ export function ClassManageClient() {
                   <div className="flex items-center gap-3">
                     <div className="size-3 rounded-full" style={{ backgroundColor: classItem.color }} />
                     <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold">{classItem.name}</p>
-                        {classItem.isHomeroom && (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
-                            <GraduationCap size={12} />
-                            班主任
-                          </span>
-                        )}
-                      </div>
+                      <p className="font-semibold">{classItem.name}</p>
                       <p className="text-xs text-muted-foreground">{classItem.studentCount} 人</p>
                     </div>
                   </div>
@@ -128,19 +105,6 @@ export function ClassManageClient() {
                   <Link href={`/class/${classItem.id}`}>
                     <Button size="sm" variant="outline">详情</Button>
                   </Link>
-                  <Button
-                    variant={classItem.isHomeroom ? "muted" : "outline"}
-                    size="sm"
-                    onClick={() => setHomeroom(classItem)}
-                    disabled={settingHomeroomId === classItem.id || classItem.isHomeroom}
-                  >
-                    {settingHomeroomId === classItem.id ? (
-                      <Loader2 className="animate-spin" size={14} />
-                    ) : (
-                      <GraduationCap size={14} />
-                    )}
-                    {classItem.isHomeroom ? "已设为班主任" : "设为班主任"}
-                  </Button>
                   <Button
                     variant="ghost"
                     size="icon-sm"

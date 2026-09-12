@@ -1,32 +1,16 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Download, GraduationCap, Loader2, RotateCcw, Upload } from "lucide-react";
+import { Download, GraduationCap, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function SettingsClient() {
-  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [backingUp, setBackingUp] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [graduating, setGraduating] = useState(false);
   const [message, setMessage] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
-
-  async function downloadTemplate() {
-    setDownloadingTemplate(true);
-    const response = await fetch("/api/wuke/template");
-    if (response.ok) {
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "wuke-template.xlsx";
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-    setDownloadingTemplate(false);
-  }
 
   async function backupData() {
     setBackingUp(true);
@@ -81,23 +65,10 @@ export function SettingsClient() {
     <div className="animate-fadeIn space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">设置</h1>
-        <p className="mt-1 text-sm text-muted-foreground">模板下载、数据备份与恢复、毕业归档</p>
+        <p className="mt-1 text-sm text-muted-foreground">数据备份与恢复、毕业归档</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">五科 Excel 模板</CardTitle>
-            <CardDescription>下载标准导入模板，表头：班级、姓名、语文、数学、英语、科学、社会、年级排名</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={downloadTemplate} disabled={downloadingTemplate}>
-              {downloadingTemplate ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />}
-              下载模板
-            </Button>
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="text-base">数据备份</CardTitle>

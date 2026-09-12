@@ -25,8 +25,7 @@ export async function GET(request: NextRequest) {
       color: item.color,
       studentCount: activeStudentCount,
       graduatedStudentCount,
-      archived: activeStudentCount === 0 && graduatedStudentCount > 0,
-      isHomeroom: item.isHomeroom
+      archived: activeStudentCount === 0 && graduatedStudentCount > 0
     };
   });
 

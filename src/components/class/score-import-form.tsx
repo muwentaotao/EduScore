@@ -8,7 +8,7 @@ import { CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { EXAM_TYPE_LABELS, EXAM_TYPE_ORDER } from "@/lib/subject";
+import { EXAM_TYPE_LABELS, EXAM_TYPE_ORDER } from "@/lib/exam-type";
 
 type Props = {
   classId: string;
