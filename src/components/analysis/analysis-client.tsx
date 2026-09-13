@@ -3,9 +3,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ArrowDownRight, ArrowUpRight, Download, Loader2, Minus } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Download, Minus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { AnalysisPageData } from "@/lib/types";
 
@@ -63,22 +64,25 @@ export function AnalysisClient() {
   }, []);
 
   const currentExam = useMemo(() => data?.exams.find((e) => e.id === data.selectedExamId) ?? null, [data]);
-  const previousExam = useMemo(() => {
-    if (!data || !currentExam) return null;
-    const idx = data.exams.findIndex((e) => e.id === currentExam.id);
-    return idx > 0 ? data.exams[idx - 1] : null;
-  }, [data, currentExam]);
-
-  const previousRankMap = useMemo(() => {
-    if (!previousExam || !data) return new Map<string, number>();
-    return new Map(); // placeholder, will compute below
-  }, [previousExam, data]);
 
   if (loading || !data) {
     return (
-      <div className="flex h-56 items-center justify-center text-muted-foreground">
-        <Loader2 className="mr-2 animate-spin" size={16} />
-        加载分析数据...
+      <div className="space-y-6 animate-fadeIn">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="h-72 w-full rounded-lg" />
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -200,7 +204,7 @@ export function AnalysisClient() {
             <TableBody>
               {data.rankings.map((row) => (
                 <TableRow key={row.studentId}>
-                  <TableCell className="font-mono text-sm font-semibold">{row.rank}</TableCell>
+                  <TableCell className="text-sm font-semibold">{row.rank}</TableCell>
                   <TableCell className="font-medium">{row.studentName}</TableCell>
                   <TableCell>
                     <span
@@ -210,9 +214,9 @@ export function AnalysisClient() {
                       {row.className}
                     </span>
                   </TableCell>
-                  <TableCell className="font-mono text-sm font-semibold">{row.score}</TableCell>
+                  <TableCell className="text-sm font-semibold">{row.score}</TableCell>
                   <TableCell>
-                    <RankChangeBadge currentRank={row.rank} />
+                    <RankChangeBadge currentRank={row.rank} previousRank={row.previousRank} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -252,7 +256,7 @@ export function AnalysisClient() {
                     {row.previousRank} → {row.currentRank}
                   </span>
                   <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-600">+{row.rankDelta}</span>
-                  <span className="font-mono text-slate-700">{formatDelta(row.scoreDelta)}</span>
+                  <span className="text-slate-700">{formatDelta(row.scoreDelta)}</span>
                 </div>
               </div>
             ))}
@@ -282,7 +286,7 @@ export function AnalysisClient() {
                     {row.previousRank} → {row.currentRank}
                   </span>
                   <span className="rounded-full bg-rose-50 px-2 py-0.5 font-semibold text-rose-600">{row.rankDelta}</span>
-                  <span className="font-mono text-slate-700">{formatDelta(row.scoreDelta)}</span>
+                  <span className="text-slate-700">{formatDelta(row.scoreDelta)}</span>
                 </div>
               </div>
             ))}

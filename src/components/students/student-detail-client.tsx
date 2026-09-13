@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { StudentDetail } from "@/lib/types";
 
@@ -93,9 +94,22 @@ export function StudentDetailClient({ studentId }: Props) {
 
   if (loading || !data) {
     return (
-      <div className="flex h-60 items-center justify-center text-muted-foreground">
-        <Loader2 className="mr-2 animate-spin" size={16} />
-        加载中...
+      <div className="space-y-6 animate-fadeIn">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="h-72 w-full rounded-lg" />
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -141,21 +155,21 @@ export function StudentDetailClient({ studentId }: Props) {
               <div className="mt-6 grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-slate-50 p-3 text-center">
                   <p className="text-xs text-muted-foreground">最新成绩</p>
-                  <p className="mt-1 text-2xl font-bold font-mono">{latestRecord?.score ?? "-"}</p>
+                  <p className="mt-1 text-2xl font-bold">{latestRecord?.score ?? "-"}</p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3 text-center">
                   <p className="text-xs text-muted-foreground">年级排名</p>
-                  <p className="mt-1 text-2xl font-bold font-mono">{latestRecord?.rank ?? "-"}</p>
+                  <p className="mt-1 text-2xl font-bold">{latestRecord?.rank ?? "-"}</p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3 text-center">
                   <p className="text-xs text-muted-foreground">成绩变化</p>
-                  <p className={`mt-1 text-lg font-bold font-mono ${scoreDelta && scoreDelta > 0 ? "text-emerald-600" : scoreDelta && scoreDelta < 0 ? "text-rose-600" : ""}`}>
+                  <p className={`mt-1 text-lg font-bold ${scoreDelta && scoreDelta > 0 ? "text-emerald-600" : scoreDelta && scoreDelta < 0 ? "text-rose-600" : ""}`}>
                     {scoreDelta === null ? "-" : scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta}
                   </p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3 text-center">
                   <p className="text-xs text-muted-foreground">名次变化</p>
-                  <p className={`mt-1 text-lg font-bold font-mono ${rankDelta && rankDelta > 0 ? "text-emerald-600" : rankDelta && rankDelta < 0 ? "text-rose-600" : ""}`}>
+                  <p className={`mt-1 text-lg font-bold ${rankDelta && rankDelta > 0 ? "text-emerald-600" : rankDelta && rankDelta < 0 ? "text-rose-600" : ""}`}>
                     {rankDelta === null ? "-" : rankDelta > 0 ? `+${rankDelta}` : rankDelta}
                   </p>
                 </div>
@@ -232,12 +246,12 @@ export function StudentDetailClient({ studentId }: Props) {
                     <TableRow key={r.examId}>
                       <TableCell className="font-medium">{r.examName}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{r.examDate}</TableCell>
-                      <TableCell className="font-mono text-lg font-semibold">
+                      <TableCell className="text-lg font-semibold">
                         {r.isAbsent ? <span className="text-muted-foreground">缺考</span> : (r.score ?? "-")}
                       </TableCell>
                       <TableCell>{statusTag(r.score, r.isAbsent)}</TableCell>
                       <TableCell>{r.rank ? `${r.rank} / ${r.totalStudents}` : "-"}</TableCell>
-                      <TableCell className="font-mono text-sm text-muted-foreground">{r.classAverage || "-"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{r.classAverage || "-"}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon-sm" onClick={() => openEdit(r)}>
                           <Pencil size={16} />

@@ -42,7 +42,7 @@ function BrandBlock({ compact = false }: { compact?: boolean }) {
       <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
         <BookOpenText size={18} />
       </div>
-      {!compact && <span className="font-display text-lg font-semibold tracking-tight text-foreground">EduScore</span>}
+      {!compact && <span className="animate-fadeIn font-display text-lg font-semibold tracking-tight text-foreground">EduScore</span>}
     </div>
   );
 }
@@ -73,7 +73,7 @@ function NavList({ pathname, collapsed }: { pathname: string; collapsed: boolean
               title={collapsed ? item.label : undefined}
             >
               <Icon size={18} />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && <span className="animate-fadeIn">{item.label}</span>}
               {active && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-primary" />}
             </Link>
           );
@@ -101,7 +101,7 @@ function SettingsNavButton({ pathname, collapsed }: { pathname: string; collapse
       title={collapsed ? "设置" : undefined}
     >
       <Settings size={18} />
-      {!collapsed && <span>设置</span>}
+      {!collapsed && <span className="animate-fadeIn">设置</span>}
       {active && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-primary" />}
     </Link>
   );
@@ -128,7 +128,7 @@ function LogoutNavItem({ collapsed }: { collapsed: boolean }) {
       )}
     >
       <LogOut size={18} />
-      {!collapsed && <span>退出登录</span>}
+      {!collapsed && <span className="animate-fadeIn">退出登录</span>}
     </Button>
   );
 }
@@ -140,7 +140,7 @@ function UserBlock({ collapsed }: { collapsed: boolean }) {
         <UserRound size={16} />
       </div>
       {!collapsed && (
-        <div className="min-w-0">
+        <div className="min-w-0 animate-fadeIn">
           <p className="truncate text-sm font-medium">历史老师</p>
           <p className="text-xs text-muted-foreground">教师</p>
         </div>
@@ -222,8 +222,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               title="搜索学生 (Ctrl+K)"
             >
               <Search size={16} />
-              {!collapsed && <span>搜索学生</span>}
-              {!collapsed && <span className="ml-auto text-xs">⌘K</span>}
+              {!collapsed && <span className="animate-fadeIn">搜索学生</span>}
+              {!collapsed && <span className="ml-auto animate-fadeIn text-xs">⌘K</span>}
             </button>
           </div>
           <div className="mt-4 flex-1">
@@ -265,7 +265,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto bg-background p-4 md:p-6">
+        <main className="flex-1 overflow-auto bg-background p-4 md:p-8 lg:p-10">
           <div className="mx-auto max-w-7xl">{children}</div>
         </main>
 

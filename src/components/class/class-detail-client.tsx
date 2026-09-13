@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   Archive,
   ArrowDownRight,
@@ -21,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ClassDetail } from "@/lib/types";
 
@@ -103,6 +104,9 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
   const [editValue, setEditValue] = useState("");
   const [savingCell, setSavingCell] = useState(false);
   const [cellMessage, setCellMessage] = useState("");
+  // 保存成功后让该单元格弹跳+高亮一下，1.2s 后消退
+  const [flashCell, setFlashCell] = useState<{ studentId: string; examId: string } | null>(null);
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // window.confirm 弹出时输入框可能触发 blur，用它挡住误取消
   const suppressBlurRef = useRef(false);
 
@@ -159,19 +163,20 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
   const distributionData = useMemo(() => {
     if (!data || !selectedExam) return [];
     const buckets = [
-      { key: "90-100", min: 90, color: "#10b981" },
-      { key: "70-89", min: 70, color: "#3b82f6" },
-      { key: "60-69", min: 60, color: "#f59e0b" },
-      { key: "<60", min: 0, color: "#f43f5e" }
+      { key: "90-100", min: 90, max: 100, color: "#10b981" },
+      { key: "80-89", min: 80, max: 89.99, color: "#3b82f6" },
+      { key: "70-79", min: 70, max: 79.99, color: "#6366f1" },
+      { key: "60-69", min: 60, max: 69.99, color: "#f59e0b" },
+      { key: "<60", min: 0, max: 59.99, color: "#f43f5e" }
     ];
-    return buckets.map((b, i) => {
-      const max = i === 0 ? 100 : buckets[i - 1].min - 0.01;
-      const count = data.students.filter((s) => {
+    return buckets.map((b) => ({
+      name: b.key,
+      count: data.students.filter((s) => {
         const score = s.absentByExam[selectedExam.id] ? null : s.scores[selectedExam.id];
-        return typeof score === "number" && score >= b.min && score <= max;
-      }).length;
-      return { name: b.key, count, color: b.color };
-    });
+        return typeof score === "number" && score >= b.min && score <= b.max;
+      }).length,
+      color: b.color
+    }));
   }, [data, selectedExam]);
 
   const studentsForTable = useMemo(() => {
@@ -278,6 +283,9 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
       }
       cancelEditCell();
       await fetchData({ silent: true });
+      setFlashCell(cell);
+      if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+      flashTimeoutRef.current = setTimeout(() => setFlashCell(null), 1200);
     } catch {
       setCellMessage("保存失败，请重试");
     } finally {
@@ -288,9 +296,22 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
 
   if (loading) {
     return (
-      <div className="flex h-60 items-center justify-center text-muted-foreground">
-        <Loader2 className="mr-2 animate-spin" size={16} />
-        加载中...
+      <div className="space-y-6 animate-fadeIn">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-56" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="h-72 w-full rounded-lg" />
+        <div className="space-y-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -469,6 +490,7 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
                 <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }} />
                 <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                  <LabelList dataKey="count" position="top" style={{ fontSize: 12, fill: "#64748b" }} />
                   {distributionData.map((d, i) => (
                     <Cell key={`cell-${i}`} fill={d.color} />
                   ))}
@@ -511,14 +533,15 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
             <TableBody>
               {studentsForTable.map((row, index) => (
                 <TableRow key={row.student.studentId} className="group row-accent">
-                  <TableCell className="font-mono text-sm font-medium text-muted-foreground">{index + 1}</TableCell>
+                  <TableCell className="text-sm font-medium text-muted-foreground">{index + 1}</TableCell>
                   <TableCell className="font-medium">{row.student.studentName}</TableCell>
                   {displayExams.map((e) => {
                     const absent = row.student.absentByExam[e.id] ?? false;
                     const score = row.student.scores[e.id] ?? null;
                     const cellEditing = isEditingCell(row.student.studentId, e.id);
+                    const flashing = flashCell?.studentId === row.student.studentId && flashCell?.examId === e.id;
                     return (
-                      <TableCell key={e.id} className="font-mono text-sm">
+                      <TableCell key={e.id} className="text-sm">
                         {cellEditing ? (
                           <Input
                             autoFocus
@@ -538,7 +561,7 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
                             onBlur={() => {
                               if (!suppressBlurRef.current) cancelEditCell();
                             }}
-                            className="h-8 w-16 px-1 text-center font-mono"
+                            className="h-8 w-16 px-1 text-center"
                           />
                         ) : archived ? (
                           <span className="inline-block px-2 py-1">{absent ? "-" : (score ?? "-")}</span>
@@ -547,7 +570,7 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
                             type="button"
                             title="点击修改该同学本次成绩"
                             onClick={() => startEditCell(row.student.studentId, e.id, score)}
-                            className="inline-block min-w-10 rounded-md px-2 py-1 text-center transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className={`inline-block min-w-10 rounded-md px-2 py-1 text-center transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${flashing ? "score-pop bg-emerald-50 font-semibold text-emerald-700" : ""}`}
                           >
                             {absent ? "-" : (score ?? "-")}
                           </button>

@@ -98,6 +98,7 @@ export type AnalysisPageData = {
     className: string;
     classColor: string;
     score: number;
+    previousRank: number | null;
   }>;
   improveTop5: Array<{
     studentId: string;

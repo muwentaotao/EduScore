@@ -40,10 +40,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background bg-[radial-gradient(70%_55%_at_50%_0%,hsl(var(--primary)/0.10),transparent_75%)] p-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-elevated">
             <BookOpenText size={24} />
           </div>
           <div className="text-center">
@@ -51,7 +51,7 @@ export default function LoginPage() {
             <p className="mt-1 text-sm text-muted-foreground">教学成绩分析系统</p>
           </div>
         </div>
-        <Card>
+        <Card className="rounded-xl shadow-elevated">
           <CardContent className="p-6">
             <form className="space-y-4" onSubmit={onSubmit}>
               <div className="space-y-1.5">

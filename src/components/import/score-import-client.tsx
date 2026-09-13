@@ -2,10 +2,8 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Upload } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ScoreImportForm } from "@/components/class/score-import-form";
 
 type ClassItem = { id: string; name: string; color: string; studentCount: number };
@@ -49,9 +47,10 @@ export function ScoreImportClient() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex h-20 items-center justify-center text-muted-foreground">
-              <Loader2 className="mr-2 animate-spin" size={16} />
-              加载班级...
+            <div className="flex flex-wrap gap-3 py-1">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 w-28" />
+              ))}
             </div>
           ) : classes.length === 0 ? (
             <p className="text-sm text-muted-foreground">暂无班级，请先创建班级</p>

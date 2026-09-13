@@ -312,6 +312,7 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
   let improveTop5: AnalysisPageData["improveTop5"] = [];
   let declineTop5: AnalysisPageData["declineTop5"] = [];
   let examProgressTop5: AnalysisPageData["examProgressTop5"] = [];
+  let previousRankMap: Map<string, number> | null = null;
 
   if (prevExam) {
     const prevScores = await prisma.score.findMany({
@@ -330,14 +331,15 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
       }
     });
     const currentRankMap = createRankMap(scores);
-    const previousRankMap = createRankMap(prevScores);
+    const prevRankMap = createRankMap(prevScores);
+    previousRankMap = prevRankMap;
     const previousScoreMap = new Map(prevScores.map((item) => [item.studentId, item.score]));
     const deltaRows = scores
       .filter((item) => previousScoreMap.has(item.studentId))
       .map((item) => {
         const previousScore = previousScoreMap.get(item.studentId);
         const currentRank = currentRankMap.get(item.studentId);
-        const previousRank = previousRankMap.get(item.studentId);
+        const previousRank = prevRankMap.get(item.studentId);
         if (previousScore === undefined || currentRank === undefined || previousRank === undefined) {
           return null;
         }
@@ -446,7 +448,10 @@ export async function getAnalysisData(examId?: string): Promise<AnalysisPageData
     })),
     classAverages,
     distribution,
-    rankings,
+    rankings: rankings.map((row) => ({
+      ...row,
+      previousRank: previousRankMap?.get(row.studentId) ?? null
+    })),
     improveTop5,
     declineTop5,
     examProgressTop5,

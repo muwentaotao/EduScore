@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { StudentListItem } from "@/lib/types";
 
@@ -161,9 +162,10 @@ export function StudentManageClient() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex h-32 items-center justify-center text-muted-foreground">
-              <Loader2 className="mr-2 animate-spin" size={16} />
-              加载中...
+            <div className="space-y-3 py-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 w-full" />
+              ))}
             </div>
           ) : (
             <Table>
@@ -194,7 +196,7 @@ export function StudentManageClient() {
                       </span>
                     </TableCell>
                     <TableCell>{s.examCount}</TableCell>
-                    <TableCell className="font-mono text-sm font-semibold">{s.latestScore ?? "-"}</TableCell>
+                    <TableCell className="text-sm font-semibold">{s.latestScore ?? "-"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{s.createdAt}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
