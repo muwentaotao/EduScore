@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
@@ -99,9 +99,18 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
   const [deletingExamId, setDeletingExamId] = useState<string | null>(null);
   const [keyword, setKeyword] = useState("");
   const [selectedExamId, setSelectedExamId] = useState("");
+  const [editingCell, setEditingCell] = useState<{ studentId: string; examId: string } | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [savingCell, setSavingCell] = useState(false);
+  const [cellMessage, setCellMessage] = useState("");
+  // window.confirm 弹出时输入框可能触发 blur，用它挡住误取消
+  const suppressBlurRef = useRef(false);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    if (!silent) {
+      setLoading(true);
+    }
     setError("");
     try {
       const scope = archived ? "?scope=archived" : "";
@@ -117,7 +126,9 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
       setData(null);
       setError("加载班级成绩失败");
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [archived, classId]);
 
@@ -198,6 +209,81 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
     await fetch(`/api/exam/${examId}`, { method: "DELETE" });
     setDeletingExamId(null);
     await fetchData();
+  }
+
+  function isEditingCell(studentId: string, examId: string) {
+    return editingCell?.studentId === studentId && editingCell?.examId === examId;
+  }
+
+  function startEditCell(studentId: string, examId: string, current: number | null) {
+    if (archived) return;
+    setCellMessage("");
+    setEditingCell({ studentId, examId });
+    setEditValue(typeof current === "number" ? String(current) : "");
+  }
+
+  function cancelEditCell() {
+    setEditingCell(null);
+    setEditValue("");
+  }
+
+  async function commitEditCell() {
+    const cell = editingCell;
+    if (!cell || savingCell) return;
+
+    const raw = editValue.trim();
+    const parsed = Number(raw);
+    if (raw === "" || !Number.isFinite(parsed)) {
+      setCellMessage("请输入有效分数");
+      return;
+    }
+    if (parsed < 0 || parsed > 100) {
+      setCellMessage("分数需在 0–100 之间");
+      return;
+    }
+
+    const student = data?.students.find((s) => s.studentId === cell.studentId);
+    const previous = student?.scores[cell.examId] ?? null;
+    const wasAbsent = student?.absentByExam[cell.examId] ?? false;
+    if (!wasAbsent && previous === parsed) {
+      cancelEditCell();
+      return;
+    }
+
+    const label = wasAbsent || previous === null ? "无成绩" : `${previous} 分`;
+
+    suppressBlurRef.current = true;
+    try {
+      if (!window.confirm(`确认将该同学本次成绩由 ${label} 改为 ${parsed} 分？`)) {
+        return;
+      }
+
+      setSavingCell(true);
+      setCellMessage("");
+      const response = await fetch("/api/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          studentId: cell.studentId,
+          examId: cell.examId,
+          score: parsed,
+          isAbsent: false
+        })
+      });
+      if (!response.ok) {
+        const result = (await response.json().catch(() => ({}))) as { message?: string };
+        setCellMessage(result.message || "保存失败，请重试");
+        return;
+      }
+      cancelEditCell();
+      await fetchData({ silent: true });
+    } catch {
+      setCellMessage("保存失败，请重试");
+    } finally {
+      suppressBlurRef.current = false;
+      setSavingCell(false);
+    }
   }
 
   if (loading) {
@@ -398,7 +484,10 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>学生成绩表</CardTitle>
-            <CardDescription>最近 {displayExams.length} 场考试成绩</CardDescription>
+            <CardDescription>
+              最近 {displayExams.length} 场考试成绩
+              {!archived && " · 点击成绩可直接修改，回车保存，Esc 取消"}
+            </CardDescription>
           </div>
           <div className="relative w-full sm:w-[240px]">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -406,6 +495,7 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
           </div>
         </CardHeader>
         <CardContent>
+          {cellMessage && <p className="mb-3 text-sm text-destructive">{cellMessage}</p>}
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -423,11 +513,48 @@ export function ClassDetailClient({ classId, mode = "current" }: Props) {
                 <TableRow key={row.student.studentId} className="group row-accent">
                   <TableCell className="font-mono text-sm font-medium text-muted-foreground">{index + 1}</TableCell>
                   <TableCell className="font-medium">{row.student.studentName}</TableCell>
-                  {displayExams.map((e) => (
-                    <TableCell key={e.id} className="font-mono text-sm">
-                      {row.student.absentByExam[e.id] ? "-" : (row.student.scores[e.id] ?? "-")}
-                    </TableCell>
-                  ))}
+                  {displayExams.map((e) => {
+                    const absent = row.student.absentByExam[e.id] ?? false;
+                    const score = row.student.scores[e.id] ?? null;
+                    const cellEditing = isEditingCell(row.student.studentId, e.id);
+                    return (
+                      <TableCell key={e.id} className="font-mono text-sm">
+                        {cellEditing ? (
+                          <Input
+                            autoFocus
+                            value={editValue}
+                            inputMode="decimal"
+                            disabled={savingCell}
+                            onChange={(event) => setEditValue(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                void commitEditCell();
+                              } else if (event.key === "Escape") {
+                                event.preventDefault();
+                                cancelEditCell();
+                              }
+                            }}
+                            onBlur={() => {
+                              if (!suppressBlurRef.current) cancelEditCell();
+                            }}
+                            className="h-8 w-16 px-1 text-center font-mono"
+                          />
+                        ) : archived ? (
+                          <span className="inline-block px-2 py-1">{absent ? "-" : (score ?? "-")}</span>
+                        ) : (
+                          <button
+                            type="button"
+                            title="点击修改该同学本次成绩"
+                            onClick={() => startEditCell(row.student.studentId, e.id, score)}
+                            className="inline-block min-w-10 rounded-md px-2 py-1 text-center transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            {absent ? "-" : (score ?? "-")}
+                          </button>
+                        )}
+                      </TableCell>
+                    );
+                  })}
                   <TableCell>
                     {scoreTag(
                       selectedExam ? row.student.scores[selectedExam.id] ?? null : null,
